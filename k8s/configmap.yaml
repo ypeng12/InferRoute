@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: inferroute-config
+  namespace: inferroute
+  labels:
+    app.kubernetes.io/name: inferroute
+data:
+  ENV: "production"
+  REDIS_URL: "redis://inferroute-redis:6379/0"
+  DATABASE_URL: "postgresql+asyncpg://postgres:postgres@inferroute-postgres:5432/inferroute"
+  OTEL_EXPORTER_OTLP_ENDPOINT: "http://inferroute-otel-collector:4317"
+  MOCK_VLLM: "false"
+  MOCK_GEMINI: "false"
+  MOCK_OLLAMA: "true"
+  OLLAMA_API_URL: "http://inferroute-ollama:11434"
+  SLO_P50_MS: "500"
+  SLO_P95_MS: "2000"
+  SLO_P99_MS: "5000"
+  CB_FAILURE_THRESHOLD: "5"
+  CB_RECOVERY_TIMEOUT_S: "30"
+  CB_SUCCESS_THRESHOLD: "2"
+  CACHE_PREFIX_MAX_CHARS: "256"
+  CACHE_DEDUP_ENABLED: "true"
+  DEFAULT_RATE_LIMIT_RPM: "120"

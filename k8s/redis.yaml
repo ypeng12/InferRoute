@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: inferroute-redis
+  namespace: inferroute
+  labels:
+    app.kubernetes.io/name: inferroute
+    app.kubernetes.io/component: redis
+spec:
+  serviceName: inferroute-redis
+  replicas: 1
+  selector:
+    matchLabels:
+      app: inferroute-redis
+  template:
+    metadata:
+      labels:
+        app: inferroute-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports:
+            - containerPort: 6379
+          args:
+            - redis-server
+            - --maxmemory
+            - 512mb
+            - --maxmemory-policy
+            - allkeys-lru
+            - --save
+            - ""
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "640Mi"
+          volumeMounts:
+            - name: redis-data
+              mountPath: /data
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+  volumeClaimTemplates:
+    - metadata:
+        name: redis-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: inferroute-redis
+  namespace: inferroute
+spec:
+  selector:
+    app: inferroute-redis
+  ports:
+    - port: 6379
+      targetPort: 6379
+  type: ClusterIP

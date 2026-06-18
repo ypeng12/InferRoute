@@ -1,4 +1,3 @@
-import time
 import logging
 from typing import Optional
 from fastapi import FastAPI
@@ -15,8 +14,9 @@ from inferroute.config import settings
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("inferroute.observability")
 
-# --- PROMETHEUS METRICS ---
-# Counters
+# ── PROMETHEUS METRICS ────────────────────────────────────────────────────────
+
+# -- Counters --
 REQUESTS_TOTAL = Counter(
     "inferroute_request_total",
     "Total requests routed",
@@ -26,7 +26,7 @@ REQUESTS_TOTAL = Counter(
 CACHE_HIT_TOTAL = Counter(
     "inferroute_cache_hit_total",
     "Total cache hit count",
-    ["type"] # exact, prefix, semantic
+    ["type"]  # exact, prefix
 )
 
 PROVIDER_COST_USD_TOTAL = Counter(
@@ -56,10 +56,34 @@ FALLBACK_TOTAL = Counter(
 RATE_LIMITED_TOTAL = Counter(
     "inferroute_rate_limited_total",
     "Total requests rate limited",
-    ["scope"] # tenant, global
+    ["scope"]  # tenant, global
 )
 
-# Histograms
+SLO_VIOLATION_TOTAL = Counter(
+    "inferroute_slo_violation_total",
+    "Total SLO violations (requests exceeding target latency)",
+    ["backend", "percentile"]  # percentile: p50, p95, p99
+)
+
+CIRCUIT_BREAKER_TRIP_TOTAL = Counter(
+    "inferroute_circuit_breaker_trip_total",
+    "Total circuit breaker trips (CLOSED→OPEN transitions)",
+    ["backend"]
+)
+
+DEDUP_HIT_TOTAL = Counter(
+    "inferroute_dedup_hit_total",
+    "Total requests coalesced via in-flight deduplication",
+    ["backend"]
+)
+
+PREFIX_CACHE_HIT_TOTAL = Counter(
+    "inferroute_prefix_cache_hit_total",
+    "Total prefix cache hits",
+    []
+)
+
+# -- Histograms --
 REQUEST_LATENCY = Histogram(
     "inferroute_request_latency_seconds",
     "End-to-end request latency in seconds",
@@ -81,46 +105,51 @@ INTER_TOKEN_LATENCY = Histogram(
     buckets=(0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5)
 )
 
-# Gauges
+# -- Gauges --
 QUEUE_DEPTH = Gauge(
     "inferroute_queue_depth",
-    "Current active scheduling queue depth",
+    "Current active request count per backend (proxy for queue depth)",
     ["backend"]
 )
 
-# --- OPENTELEMETRY SETUP ---
+CIRCUIT_BREAKER_STATE = Gauge(
+    "inferroute_circuit_breaker_state",
+    "Circuit breaker state per backend (0=CLOSED, 1=OPEN, 2=HALF_OPEN)",
+    ["backend"]
+)
+
+# Sliding-window percentile estimates (updated by router after each request)
+P50_LATENCY_MS = Gauge("inferroute_p50_latency_ms", "Estimated p50 latency (ms)", ["backend"])
+P95_LATENCY_MS = Gauge("inferroute_p95_latency_ms", "Estimated p95 latency (ms)", ["backend"])
+P99_LATENCY_MS = Gauge("inferroute_p99_latency_ms", "Estimated p99 latency (ms)", ["backend"])
+
+# ── OPENTELEMETRY SETUP ───────────────────────────────────────────────────────
 tracer = trace.get_tracer("inferroute")
+
 
 def setup_observability(app: FastAPI) -> None:
     """Initialize OpenTelemetry and Prometheus instrumentation."""
     try:
-        # Define Resource attributes
         resource = Resource.create(attributes={
             "service.name": settings.SERVICE_NAME,
             "service.environment": settings.ENV
         })
-        
-        # Configure TracerProvider
         provider = TracerProvider(resource=resource)
-        
-        # Configure OTLP Exporter pointing to the OTel Collector
-        # This will export spans to Jaeger via the collector
         otlp_exporter = OTLPSpanExporter(
             endpoint=settings.OTEL_EXPORTER_OTLP_ENDPOINT,
             insecure=True
         )
-        
         span_processor = BatchSpanProcessor(otlp_exporter)
         provider.add_span_processor(span_processor)
         trace.set_tracer_provider(provider)
-        
-        # Instrument FastAPI app
         FastAPIInstrumentor.instrument_app(app, tracer_provider=provider)
         logger.info("OpenTelemetry instrumentation completed successfully.")
-        
     except Exception as e:
-        logger.warning(f"Failed to initialize OpenTelemetry tracing: {e}. Running without distributed tracing.")
+        logger.warning(
+            f"Failed to initialize OpenTelemetry tracing: {e}. Running without distributed tracing."
+        )
+
 
 def get_metrics_response() -> tuple[bytes, str]:
-    """Generate formatting compliant with Prometheus scraping protocol."""
+    """Generate Prometheus scrape-compatible response."""
     return generate_latest(), CONTENT_TYPE_LATEST

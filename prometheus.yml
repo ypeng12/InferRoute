@@ -3,7 +3,7 @@ global:
   evaluation_interval: 5s
 
 scrape_configs:
-  - job_name: "edgeserve-gateway"
+  - job_name: "inferroute-gateway"
     static_configs:
       - targets: ["gateway:8080"] # If running gateway inside docker-compose
       - targets: ["host.docker.internal:8080"] # If running gateway locally on host

@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: inferroute
+  labels:
+    app.kubernetes.io/name: inferroute
+    app.kubernetes.io/part-of: inferroute
