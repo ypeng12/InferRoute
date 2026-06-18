@@ -1,0 +1,31 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: inferroute-ingress
+  namespace: inferroute
+  labels:
+    app.kubernetes.io/name: inferroute
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+    # Uncomment to enable TLS/cert-manager:
+    # cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  ingressClassName: nginx
+  # Uncomment and configure for TLS:
+  # tls:
+  #   - hosts:
+  #       - inferroute.example.com
+  #     secretName: inferroute-tls
+  rules:
+    - host: inferroute.example.com   # Replace with your domain
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: inferroute-gateway
+                port:
+                  number: 80

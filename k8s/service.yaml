@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: inferroute-gateway
+  namespace: inferroute
+  labels:
+    app.kubernetes.io/name: inferroute
+    app.kubernetes.io/component: gateway
+spec:
+  selector:
+    app: inferroute-gateway
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+      protocol: TCP
+  type: ClusterIP
+---
+# LoadBalancer for external access (or replace with Ingress)
+apiVersion: v1
+kind: Service
+metadata:
+  name: inferroute-gateway-external
+  namespace: inferroute
+  labels:
+    app.kubernetes.io/name: inferroute
+    app.kubernetes.io/component: gateway
+spec:
+  selector:
+    app: inferroute-gateway
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080
+      protocol: TCP
+  type: LoadBalancer

@@ -1,6 +1,38 @@
 version: '3.8'
 
 services:
+  # ── InferRoute Gateway ──────────────────────────────────────────────────────
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: inferroute-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - ENV=development
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/inferroute
+      - REDIS_URL=redis://redis:6379/0
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4317
+      - MOCK_VLLM=true
+      - MOCK_GEMINI=true
+      - MOCK_OLLAMA=true
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/healthz')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
     container_name: inferroute-postgres
@@ -18,6 +50,7 @@ services:
       timeout: 5s
       retries: 5
 
+  # ── Redis ───────────────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
     container_name: inferroute-redis
@@ -25,18 +58,43 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    command: >
+      redis-server
+      --maxmemory 512mb
+      --maxmemory-policy allkeys-lru
+      --save ""
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 5
 
+  # ── Local Ollama (optional — comment out if not using local models) ─────────
+  ollama:
+    image: ollama/ollama:latest
+    container_name: inferroute-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    # Uncomment for GPU support:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+    profiles:
+      - local-llm  # start with: docker compose --profile local-llm up
+
+  # ── Jaeger (distributed tracing) ────────────────────────────────────────────
   jaeger:
     image: jaegertracing/all-in-one:1.57
     container_name: inferroute-jaeger
     ports:
-      - "16686:16686" # UI
-      - "4317:4317"   # OTLP gRPC receiver directly to Jaeger if bypass OTel collector, but collector runs on 4317 on host
+      - "16686:16686"  # UI
+      - "4317:4317"    # OTLP gRPC
     environment:
       - COLLECTOR_OTLP_ENABLED=true
     healthcheck:
@@ -45,6 +103,7 @@ services:
       timeout: 5s
       retries: 5
 
+  # ── OpenTelemetry Collector ──────────────────────────────────────────────────
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.102.0
     container_name: inferroute-otel-collector
@@ -52,15 +111,16 @@ services:
     volumes:
       - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
     ports:
-      - "4318:4318" # OTLP HTTP receiver
-      - "8888:8888" # Internal metrics
-      - "9464:9464" # Prometheus exporter endpoint
+      - "4318:4318"  # OTLP HTTP
+      - "8888:8888"  # Internal metrics
+      - "9464:9464"  # Prometheus exporter
     depends_on:
       jaeger:
         condition: service_healthy
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
+  # ── Prometheus ───────────────────────────────────────────────────────────────
   prometheus:
     image: prom/prometheus:v2.52.0
     container_name: inferroute-prometheus
@@ -77,6 +137,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
+  # ── Grafana ───────────────────────────────────────────────────────────────────
   grafana:
     image: grafana/grafana:11.0.0
     container_name: inferroute-grafana
@@ -95,3 +156,4 @@ volumes:
   redis_data:
   prometheus_data:
   grafana_data:
+  ollama_data:
