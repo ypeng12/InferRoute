@@ -17,7 +17,7 @@ import time
 from typing import Any, Optional, NamedTuple
 
 from inferroute.auth import get_redis_client
-from inferroute.circuit_breaker import get_circuit_breaker
+from inferroute import circuit_breaker
 from inferroute.config import settings
 from inferroute.observability import (
     ROUTING_DECISION_TOTAL,
@@ -276,7 +276,7 @@ class Router:
         # ── Circuit breaker filtering ─────────────────────────────────────────
         available: list[str] = []
         for b in candidates:
-            cb = get_circuit_breaker(b)
+            cb = circuit_breaker.get_circuit_breaker(b)
             if await cb.allow_request():
                 available.append(b)
             else:
