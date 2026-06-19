@@ -25,7 +25,7 @@ from inferroute.auth import verify_api_key, check_rate_limit
 from inferroute.cache import CacheLayer
 from inferroute.router import Router, ALL_BACKENDS, BASELINES
 from inferroute.validator import OutputValidator
-from inferroute.circuit_breaker import get_circuit_breaker, initialize_circuit_breakers
+from inferroute import circuit_breaker
 from inferroute.adapters.openai import OpenAIAdapter
 from inferroute.adapters.gemini import GeminiAdapter
 from inferroute.adapters.vllm import VLLMAdapter
@@ -68,7 +68,7 @@ async def lifespan(app: FastAPI):
     auth.redis_client = redis_client
 
     # Inject Redis into circuit breakers
-    initialize_circuit_breakers(redis_client, list(ADAPTERS.keys()))
+    circuit_breaker.initialize_circuit_breakers(redis_client, list(ADAPTERS.keys()))
 
     logger.info("InferRoute gateway ready.")
     yield
@@ -213,7 +213,7 @@ async def list_providers():
     """Returns real-time provider health and circuit breaker states."""
     providers = []
     for backend in ALL_BACKENDS:
-        cb = get_circuit_breaker(backend)
+        cb = circuit_breaker.get_circuit_breaker(backend)
         cb_status = await cb.get_status()
         baseline = BASELINES[backend]
         providers.append({
@@ -231,7 +231,7 @@ async def routing_status():
     """Real-time routing dashboard: CB states, percentile latencies, cache stats."""
     backends_info = []
     for backend in ALL_BACKENDS:
-        cb = get_circuit_breaker(backend)
+        cb = circuit_breaker.get_circuit_breaker(backend)
         cb_info = await cb.get_status()
         stats = await router_engine.get_backend_stats(backend)
         backends_info.append({
@@ -376,7 +376,7 @@ async def handle_blocking_flow(
     selected_backend = primary
     error_msg: Optional[str] = None
     status_str = "completed"
-    cb_primary = get_circuit_breaker(primary)
+    cb_primary = circuit_breaker.get_circuit_breaker(primary)
 
     QUEUE_DEPTH.labels(backend=primary).inc()
 
@@ -402,7 +402,7 @@ async def handle_blocking_flow(
             FALLBACK_TOTAL.labels(from_backend=primary, to_backend=fallback, reason=str(primary_exc)[:100]).inc()
             QUEUE_DEPTH.labels(backend=primary).dec()
             QUEUE_DEPTH.labels(backend=fallback).inc()
-            cb_fallback = get_circuit_breaker(fallback)
+            cb_fallback = circuit_breaker.get_circuit_breaker(fallback)
 
             try:
                 resp = await ADAPTERS[fallback].generate(req)
@@ -528,7 +528,7 @@ async def handle_streaming_flow(
         cost_usd = 0.0
 
         QUEUE_DEPTH.labels(backend=primary).inc()
-        cb = get_circuit_breaker(primary)
+        cb = circuit_breaker.get_circuit_breaker(primary)
 
         try:
             logger.info(f"[Gateway] Streaming from primary backend: {primary}")
@@ -563,7 +563,7 @@ async def handle_streaming_flow(
                 QUEUE_DEPTH.labels(backend=fallback).inc()
                 accumulated_content = []
                 ttft_recorded = False
-                cb_fb = get_circuit_breaker(fallback)
+                cb_fb = circuit_breaker.get_circuit_breaker(fallback)
 
                 try:
                     async for chunk in ADAPTERS[fallback].generate_stream(req):

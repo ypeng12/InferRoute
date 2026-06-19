@@ -46,15 +46,15 @@ async def test_router_hard_pins():
     router = Router()
     
     # Test OpenAI pinning
-    primary, fallback, reason = await router.choose_backend({"model": "gpt-4o-mini"})
-    assert primary == "openai"
-    assert fallback is None
-    assert "gpt-4o-mini" in reason
+    decision = await router.choose_backend({"model": "gpt-4o-mini"})
+    assert decision.primary == "openai"
+    assert decision.fallback == "gemini"
+    assert "gpt-4o-mini" in decision.reason
 
     # Test vLLM pinning
-    primary, fallback, reason = await router.choose_backend({"model": "meta-llama/Meta-Llama-3-8B-Instruct"})
-    assert primary == "vllm"
-    assert fallback == "openai"
+    decision = await router.choose_backend({"model": "meta-llama/Meta-Llama-3-8B-Instruct"})
+    assert decision.primary == "vllm"
+    assert decision.fallback == "openai"
 
 
 @pytest.mark.asyncio
@@ -69,9 +69,9 @@ async def test_router_optimization():
     }
     
     # Because baselines set local (vllm) score higher due to caches, it will choose vllm
-    primary, fallback, reason = await router.choose_backend(req)
-    assert primary in ["vllm", "openai"]
-    assert fallback is not None
+    decision = await router.choose_backend(req)
+    assert decision.primary in ["vllm", "openai", "ollama"]
+    assert decision.fallback is not None
 
 
 def test_validator_schema():
