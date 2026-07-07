@@ -77,3 +77,32 @@ class OutputValidator:
             return ValidationResult(ok=True)
             
         return self.validate_schema(accumulated_content, schema_dict)
+
+    def validate_speculative_quality(self, content: str) -> ValidationResult:
+        """
+        Evaluates the quality of a speculative generation (e.g., from small models).
+        Checks for empty content, repetitive loops, and system error leakage.
+        """
+        if not content or len(content.strip()) < 5:
+            return ValidationResult(ok=False, reason="Too short or empty content")
+            
+        words = content.split()
+        if len(words) > 10:
+            # Check for repetitive loops (common in small models)
+            for i in range(len(words) - 5):
+                sub = words[i:i+3]
+                occurrences = 0
+                for j in range(len(words) - 2):
+                    if words[j:j+3] == sub:
+                        occurrences += 1
+                if occurrences > 3:
+                    VALIDATION_FAIL_TOTAL.labels(reason="repetitive_loop").inc()
+                    return ValidationResult(ok=False, reason="Repetitive generation loop detected")
+                    
+        # Check for system error leaks or traceback exposures
+        for pattern in ("traceback (most recent call", "exception:", "internal server error", "connection error"):
+            if pattern in content.lower():
+                VALIDATION_FAIL_TOTAL.labels(reason="error_leak").inc()
+                return ValidationResult(ok=False, reason=f"Suspected error leak: {pattern}")
+                
+        return ValidationResult(ok=True)

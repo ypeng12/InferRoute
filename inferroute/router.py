@@ -80,6 +80,9 @@ class BackendScore(NamedTuple):
 
 
 class Router:
+    def __init__(self, redis_client=None):
+        from inferroute.router_trie import PrefixTrieRouter
+        self.trie_router = PrefixTrieRouter(redis_client)
 
     # ── Redis helpers ─────────────────────────────────────────────────────────
 
@@ -296,7 +299,11 @@ class Router:
             return RoutingDecision(selected, fallback, f"Only available backend: {selected}", True, policy)
 
         # ── Multi-objective scoring ───────────────────────────────────────────
-        if policy == "cost":
+        is_speculative = policy == "speculative" or routing_opts.get("speculative", False)
+        # For speculative policy, we optimize local score weighting but keep cloud backends as fallback
+        if is_speculative:
+            w_ttft, w_p95, w_cost, w_fail = 0.30, 0.25, 0.15, 0.30
+        elif policy == "cost":
             w_ttft, w_p95, w_cost, w_fail = 0.05, 0.05, 0.80, 0.10
         elif policy == "reliability":
             w_ttft, w_p95, w_cost, w_fail = 0.20, 0.20, 0.05, 0.55
@@ -304,9 +311,13 @@ class Router:
             w_ttft, w_p95, w_cost, w_fail = 0.40, 0.35, 0.10, 0.15
 
         # Estimate prompt token count for cost forecasting
-        prompt_len = sum(len(m.get("content", "")) for m in req.get("messages", []))
+        prompt_text = " ".join(m.get("content", "") for m in req.get("messages", []))
+        prompt_len = len(prompt_text)
         input_tokens = prompt_len // 4 + 10
         expected_output = req.get("max_output_tokens", 256)
+
+        # Get warm KV Cache affinity hosts
+        affinity_hosts = await self.trie_router.get_affinity_hosts(prompt_text)
 
         scores: list[BackendScore] = []
         for backend in available:
@@ -320,12 +331,17 @@ class Router:
             slo_ok, slo_violations = self._check_slo(backend, stats)
             slo_penalty = 0.0 if slo_ok else 500.0
 
+            # Dynamic cache bonus based on distributed cache affinity tree
+            cache_bonus = stats["cache_bonus"]
+            if backend in affinity_hosts:
+                cache_bonus += 250.0  # huge scoring advantage for host containing matching prompt prefix
+
             score_val = (
                 w_ttft * stats["ttft_ms"]
                 + w_p95 * stats["p95_ms"]
                 + w_cost * expected_cost * 100_000.0   # scale to ms-comparable
                 + w_fail * stats["failure_risk"] * 1000.0
-                - stats["cache_bonus"]                  # warm cache lowers score (good)
+                - cache_bonus
                 + slo_penalty
             )
 
@@ -346,8 +362,21 @@ class Router:
             ))
 
         scores.sort(key=lambda x: x.score)
-        primary = scores[0]
-        fallback_name = scores[1].name if len(scores) > 1 else None
+
+        if is_speculative:
+            policy = "speculative"
+            # Separate local and cloud candidates
+            local_candidates = [s for s in scores if s.name in local_backends]
+            cloud_candidates = [s for s in scores if s.name in cloud_backends]
+            if local_candidates and cloud_candidates:
+                primary = local_candidates[0]
+                fallback_name = cloud_candidates[0].name
+            else:
+                primary = scores[0]
+                fallback_name = scores[1].name if len(scores) > 1 else None
+        else:
+            primary = scores[0]
+            fallback_name = scores[1].name if len(scores) > 1 else None
 
         slo_compliant, _ = self._check_slo(primary.name, await self.get_backend_stats(primary.name))
 

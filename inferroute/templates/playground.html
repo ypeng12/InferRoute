@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>InferRoute Gateway Control Center</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #07050F;
+            --panel-bg: rgba(22, 18, 38, 0.7);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-primary: #F3F1F5;
+            --text-secondary: #9E9AA8;
+            --accent-violet: #8B5CF6;
+            --accent-cyan: #06B6D4;
+            --accent-rose: #F43F5E;
+            --accent-emerald: #10B981;
+            --glow-shadow: 0 0 20px rgba(139, 92, 246, 0.15);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(139, 92, 246, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.08) 0%, transparent 40%);
+        }
+
+        header {
+            padding: 1.25rem 2rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(7, 5, 15, 0.8);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-text {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #FFF 30%, var(--accent-violet) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            font-weight: 500;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            color: var(--accent-emerald);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--accent-emerald);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--accent-emerald);
+            animation: pulse 2s infinite;
+        }
+
+        .config-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .api-key-input {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            width: 260px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .api-key-input:focus {
+            border-color: var(--accent-violet);
+            box-shadow: 0 0 10px rgba(139, 92, 246, 0.2);
+        }
+
+        main {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            padding: 1.5rem;
+            gap: 1.5rem;
+            max-width: 1600px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .glass-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            backdrop-filter: blur(16px);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: var(--glow-shadow);
+        }
+
+        /* ── Left Panel: Chat Playground ─────────────────────────────────────── */
+        .playground-container {
+            height: calc(100vh - 120px);
+        }
+
+        .panel-header {
+            padding: 1.25rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .controls-row {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        select {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+            outline: none;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+
+        select:focus {
+            border-color: var(--accent-cyan);
+        }
+
+        .chat-history {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .message-bubble {
+            max-width: 80%;
+            padding: 1rem;
+            border-radius: 12px;
+            line-height: 1.5;
+            font-size: 0.95rem;
+        }
+
+        .message-user {
+            background: var(--accent-violet);
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 2px;
+        }
+
+        .message-assistant {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            align-self: flex-start;
+            border-bottom-left-radius: 2px;
+        }
+
+        .chat-input-area {
+            padding: 1.25rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 0.75rem;
+            background: rgba(7, 5, 15, 0.4);
+        }
+
+        textarea {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.75rem 1rem;
+            border-radius: 10px;
+            font-family: inherit;
+            font-size: 0.95rem;
+            resize: none;
+            outline: none;
+            height: 48px;
+            transition: all 0.3s;
+        }
+
+        textarea:focus {
+            border-color: var(--accent-violet);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .send-btn {
+            background: linear-gradient(135deg, var(--accent-violet), #7C3AED);
+            color: white;
+            border: none;
+            padding: 0 1.5rem;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .send-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+        }
+
+        /* ── Right Panel: Cost & Analytics Dashboard ─────────────────────────── */
+        .analytics-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            height: calc(100vh - 120px);
+            overflow-y: auto;
+            padding-right: 0.25rem;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .metric-card {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+        }
+
+        .card-savings::before { background: linear-gradient(90deg, var(--accent-emerald), #34D399); }
+        .card-tokens::before { background: linear-gradient(90deg, var(--accent-cyan), #22D3EE); }
+        .card-latency::before { background: linear-gradient(90deg, var(--accent-violet), #A78BFA); }
+        .card-cache::before { background: linear-gradient(90deg, var(--accent-rose), #FB7185); }
+
+        .metric-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .metric-value {
+            font-size: 1.6rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .metric-subtext {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        /* ── Route pipeline Visualizer ──────────────────────────────────────── */
+        .pipeline-card {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 1.5rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .pipeline-title {
+            font-size: 1rem;
+            font-weight: 600;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .pipeline-flow {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            position: relative;
+            padding-left: 1.5rem;
+        }
+
+        .pipeline-flow::before {
+            content: '';
+            position: absolute;
+            left: 5px;
+            top: 10px;
+            bottom: 10px;
+            width: 2px;
+            background: rgba(255, 255, 255, 0.05);
+            z-index: 1;
+        }
+
+        .pipeline-step {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            position: relative;
+            z-index: 2;
+            opacity: 0.4;
+            transition: all 0.5s ease;
+        }
+
+        .pipeline-step.active {
+            opacity: 1;
+        }
+
+        .pipeline-dot {
+            width: 12px;
+            height: 12px;
+            background: #2D2A3A;
+            border: 2px solid var(--text-secondary);
+            border-radius: 50%;
+            position: absolute;
+            left: -19px;
+            transition: all 0.3s;
+        }
+
+        .pipeline-step.active .pipeline-dot {
+            background: var(--accent-violet);
+            border-color: var(--text-primary);
+            box-shadow: 0 0 10px var(--accent-violet);
+        }
+
+        .pipeline-step.success .pipeline-dot {
+            background: var(--accent-emerald);
+            border-color: var(--text-primary);
+            box-shadow: 0 0 10px var(--accent-emerald);
+        }
+
+        .pipeline-step.failed .pipeline-dot {
+            background: var(--accent-rose);
+            border-color: var(--text-primary);
+            box-shadow: 0 0 10px var(--accent-rose);
+        }
+
+        .step-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .step-name {
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .step-desc {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        /* ── Animations ──────────────────────────────────────────────────────── */
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+            70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        @keyframes pulse-violet {
+            0% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.4); }
+            70% { box-shadow: 0 0 0 8px rgba(139, 92, 246, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); }
+        }
+
+        .pulse-active {
+            animation: pulse-violet 1.5s infinite;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-section">
+            <div class="logo-text">InferRoute</div>
+            <div class="status-badge">
+                <div class="status-dot"></div>
+                Gateway Online
+            </div>
+        </div>
+        <div class="config-section">
+            <!-- Wallet balance and recharge -->
+            <div id="walletSection" style="display: flex; align-items: center; gap: 0.5rem; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); padding: 0.35rem 0.75rem; border-radius: 8px; font-size: 0.85rem;">
+                <span style="color: var(--text-secondary);">Balance:</span>
+                <span id="walletBalanceVal" style="color: var(--accent-emerald); font-weight: 600;">$0.00</span>
+                <button id="rechargeBtn" style="background: rgba(16, 185, 129, 0.1); border: 1px solid var(--accent-emerald); color: var(--accent-emerald); padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.75rem; cursor: pointer; transition: all 0.3s; margin-left: 0.25rem;">+ $10</button>
+            </div>
+            <span style="font-size: 0.85rem; color: var(--text-secondary);">Auth Key:</span>
+            <input type="text" id="apiKeyInput" class="api-key-input" value="sk-inferroute-demo" placeholder="Enter API Key">
+        </div>
+    </header>
+
+    <main>
+        <!-- Left Panel: Chat Playground -->
+        <div class="glass-panel playground-container">
+            <div class="panel-header">
+                <div class="panel-title">Interactive Sandbox</div>
+                <div class="controls-row">
+                    <select id="modelSelect">
+                        <option value="edge/auto">🎯 Auto Route (Edge Priority)</option>
+                        <option value="openai/gpt-4o-mini">Cloud: OpenAI GPT-4o-mini</option>
+                        <option value="gemini/gemini-1.5-flash">Cloud: Google Gemini Flash</option>
+                        <option value="vllm/llama-3-8b">Local: vLLM Llama-3-8B</option>
+                        <option value="ollama/llama3">Local: Ollama Llama-3</option>
+                    </select>
+                    <select id="policySelect">
+                        <option value="speculative">🛡️ Speculative Fallback (Cost Saver)</option>
+                        <option value="latency">⚡ Latency-Aware (Fastest)</option>
+                        <option value="cost">💰 Cost-Aware (Cheapest)</option>
+                        <option value="load_balanced">⚖️ Load Balanced</option>
+                    </select>
+                </div>
+            </div>
+            <div class="chat-history" id="chatHistory">
+                <div class="message-bubble message-assistant">
+                    Welcome to InferRoute Gateway. Send a prompt to see active KV caching, speculative loop fallback, and latency routing statistics in real-time.
+                </div>
+            </div>
+            <div class="chat-input-area">
+                <textarea id="promptInput" placeholder="Type a message..." rows="1"></textarea>
+                <button class="send-btn" id="sendBtn">Send</button>
+            </div>
+        </div>
+
+        <!-- Right Panel: Cost & Analytics Dashboard -->
+        <div class="analytics-container">
+            <div class="metrics-grid">
+                <div class="metric-card card-savings">
+                    <span class="metric-label">Money Saved</span>
+                    <span class="metric-value" id="savedCostVal">$0.0000</span>
+                    <span class="metric-subtext">Cumulative USD Saved</span>
+                </div>
+                <div class="metric-card card-tokens">
+                    <span class="metric-label">Tokens Saved</span>
+                    <span class="metric-value" id="savedTokensVal">0</span>
+                    <span class="metric-subtext">Served by Cache/Local</span>
+                </div>
+                <div class="metric-card card-latency">
+                    <span class="metric-label">Last TTFT / Latency</span>
+                    <span class="metric-value" id="latencyVal">0 / 0 ms</span>
+                    <span class="metric-subtext">Time to First Token / Total</span>
+                </div>
+                <div class="metric-card card-cache">
+                    <span class="metric-label">Cache Hit Rate</span>
+                    <span class="metric-value" id="cacheHitVal">0%</span>
+                    <span class="metric-subtext">Exact & Prefix Matches</span>
+                </div>
+            </div>
+
+            <!-- Route Visualizer Pipeline -->
+            <div class="pipeline-card">
+                <div class="pipeline-title">
+                    <span>Live Route Trace</span>
+                    <span style="font-size: 0.8rem; color: var(--accent-cyan); font-weight: normal;" id="selectedRouteBadge">idle</span>
+                </div>
+                <div class="pipeline-flow">
+                    <div class="pipeline-step" id="stepInput">
+                        <div class="pipeline-dot"></div>
+                        <div class="step-info">
+                            <span class="step-name">1. Client Request Received</span>
+                            <span class="step-desc">Auth header validated, parsing JSON payload</span>
+                        </div>
+                    </div>
+                    <div class="pipeline-step" id="stepCache">
+                        <div class="pipeline-dot"></div>
+                        <div class="step-info">
+                            <span class="step-name">2. Exact & Prefix Cache Check</span>
+                            <span class="step-desc" id="cacheStepDesc">Checking Redis keys and Radix Trie affinity</span>
+                        </div>
+                    </div>
+                    <div class="pipeline-step" id="stepLimit">
+                        <div class="pipeline-dot"></div>
+                        <div class="step-info">
+                            <span class="step-name">3. Concurrency Limiter</span>
+                            <span class="step-desc">Acquiring slot from Vegas rate limiter</span>
+                        </div>
+                    </div>
+                    <div class="pipeline-step" id="stepExecute">
+                        <div class="pipeline-dot"></div>
+                        <div class="step-info">
+                            <span class="step-name">4. Primary Engine Execution</span>
+                            <span class="step-desc" id="executeStepDesc">Dispatching prompt to primary backend</span>
+                        </div>
+                    </div>
+                    <div class="pipeline-step" id="stepValidate">
+                        <div class="pipeline-dot"></div>
+                        <div class="step-info">
+                            <span class="step-name">5. Output Quality Validation</span>
+                            <span class="step-desc" id="validationStepDesc">Buffering stream chunks to check repetitive loops</span>
+                        </div>
+                    </div>
+                    <div class="pipeline-step" id="stepCascade">
+                        <div class="pipeline-dot"></div>
+                        <div class="step-info">
+                            <span class="step-name">6. Cascade Fallback</span>
+                            <span class="step-desc" id="cascadeStepDesc">No fallback triggered (nominal quality)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const promptInput = document.getElementById('promptInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const chatHistory = document.getElementById('chatHistory');
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        const modelSelect = document.getElementById('modelSelect');
+        const policySelect = document.getElementById('policySelect');
+
+        // Session metrics accumulator
+        let sessionSavingsUsd = 0.0;
+        let sessionSavedTokens = 0;
+        let sessionTotalRequests = 0;
+        let sessionCacheHits = 0;
+
+        // Auto adjust textarea height
+        promptInput.addEventListener('input', () => {
+            promptInput.style.height = 'auto';
+            promptInput.style.height = (promptInput.scrollHeight) + 'px';
+        });
+
+        // Fetch current wallet balance
+        async function fetchWalletBalance() {
+            const authHeader = `Bearer ${apiKeyInput.value}`;
+            try {
+                const res = await fetch('/v1/billing/balance', {
+                    headers: { 'Authorization': authHeader }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('walletBalanceVal').innerText = `$${data.balance_usd.toFixed(2)}`;
+                }
+            } catch (err) {
+                console.error("Failed to fetch wallet balance:", err);
+            }
+        }
+
+        // Recharge wallet
+        async function rechargeWallet() {
+            const authHeader = `Bearer ${apiKeyInput.value}`;
+            try {
+                const res = await fetch('/v1/billing/recharge?amount=10.0', {
+                    method: 'POST',
+                    headers: { 'Authorization': authHeader }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('walletBalanceVal').innerText = `$${data.new_balance_usd.toFixed(2)}`;
+                    
+                    // Log to chat history
+                    const botBubble = document.createElement('div');
+                    botBubble.className = 'message-bubble message-assistant';
+                    botBubble.style.borderColor = 'var(--accent-emerald)';
+                    botBubble.innerText = `💳 Wallet successfully recharged with $10.00! New Balance: $${data.new_balance_usd.toFixed(2)}`;
+                    chatHistory.appendChild(botBubble);
+                    chatHistory.scrollTop = chatHistory.scrollHeight;
+                }
+            } catch (err) {
+                console.error("Recharge failed:", err);
+            }
+        }
+
+        // Initialize lifetime DB metrics
+        async function fetchLifetimeMetrics() {
+            try {
+                const res = await fetch('/v1/routing/metrics');
+                if (res.ok) {
+                    const data = await res.json();
+                    sessionSavingsUsd = data.estimated_saved_usd || 0.0;
+                    sessionSavedTokens = data.saved_tokens || 0;
+                    sessionTotalRequests = data.total_requests || 0;
+                    sessionCacheHits = data.cache_hits || 0;
+                    updateDashboardUI(0, 0, false, null);
+                }
+                await fetchWalletBalance();
+            } catch (err) {
+                console.error("Failed to load metrics:", err);
+            }
+        }
+
+        function updateDashboardUI(ttft = 0, total_lat = 0, isCacheHit = false, backend = null) {
+            document.getElementById('savedCostVal').innerText = `$${sessionSavingsUsd.toFixed(4)}`;
+            document.getElementById('savedTokensVal').innerText = sessionSavedTokens.toLocaleString();
+            document.getElementById('latencyVal').innerText = `${Math.round(ttft)} / ${Math.round(total_lat)} ms`;
+            
+            const hitRate = sessionTotalRequests > 0 ? (sessionCacheHits / sessionTotalRequests) * 100 : 0;
+            document.getElementById('cacheHitVal').innerText = `${hitRate.toFixed(1)}%`;
+            
+            if (backend) {
+                document.getElementById('selectedRouteBadge').innerText = backend.toUpperCase();
+            }
+        }
+
+        // Stepper Visualizer Helpers
+        function resetPipeline() {
+            const steps = ['stepInput', 'stepCache', 'stepLimit', 'stepExecute', 'stepValidate', 'stepCascade'];
+            steps.forEach(id => {
+                const el = document.getElementById(id);
+                el.className = 'pipeline-step';
+            });
+            document.getElementById('cacheStepDesc').innerText = 'Checking Redis keys and Radix Trie affinity';
+            document.getElementById('executeStepDesc').innerText = 'Dispatching prompt to primary backend';
+            document.getElementById('validationStepDesc').innerText = 'Buffering stream chunks to check repetitive loops';
+            document.getElementById('cascadeStepDesc').innerText = 'No fallback triggered (nominal quality)';
+            document.getElementById('selectedRouteBadge').innerText = 'routing...';
+        }
+
+        function activateStep(id, status = 'active', desc = null) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.className = `pipeline-step ${status}`;
+                if (desc) {
+                    el.querySelector('.step-desc').innerText = desc;
+                }
+            }
+        }
+
+        // Send logic
+        async function sendMessage() {
+            const text = promptInput.value.trim();
+            if (!text) return;
+
+            promptInput.value = '';
+            promptInput.style.height = '48px';
+
+            // 1. Add User Bubble
+            const userBubble = document.createElement('div');
+            userBubble.className = 'message-bubble message-user';
+            userBubble.innerText = text;
+            chatHistory.appendChild(userBubble);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+
+            // 2. Prepare Assistant Bubble
+            const assistantBubble = document.createElement('div');
+            assistantBubble.className = 'message-bubble message-assistant';
+            assistantBubble.innerText = '• • •';
+            chatHistory.appendChild(assistantBubble);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+
+            // 3. Start Visualizer Stepper Animation
+            resetPipeline();
+            activateStep('stepInput', 'success');
+            activateStep('stepCache', 'active');
+
+            const modelVal = modelSelect.value;
+            const policyVal = policySelect.value;
+            const authHeader = `Bearer ${apiKeyInput.value}`;
+
+            const requestBody = {
+                model: modelVal,
+                messages: [{ role: "user", content: text }],
+                stream: true,
+                routing: { policy: policyVal }
+            };
+
+            try {
+                const response = await fetch('/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': authHeader
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+
+                if (!response.ok) {
+                    let errMsg = `Error ${response.status}: `;
+                    try {
+                        const errJson = await response.json();
+                        errMsg += errJson.detail || response.statusText;
+                    } catch (e) {
+                        errMsg += await response.text() || response.statusText;
+                    }
+                    
+                    assistantBubble.innerText = errMsg;
+                    assistantBubble.style.borderColor = 'var(--accent-rose)';
+                    activateStep('stepLimit', 'failed', 'Request Refused / Insufficient Funds');
+                    
+                    if (response.status === 402) {
+                        const balanceVal = document.getElementById('walletBalanceVal');
+                        balanceVal.style.color = 'var(--accent-rose)';
+                        setTimeout(() => { balanceVal.style.color = 'var(--accent-emerald)'; }, 1500);
+                    }
+                    return;
+                }
+
+                // Consume SSE stream
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder('utf-8');
+                let buffer = '';
+                let hasStartedText = false;
+
+                activateStep('stepCache', 'success');
+                activateStep('stepLimit', 'success');
+                activateStep('stepExecute', 'active');
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop(); // Keep partial line in buffer
+
+                    for (const line of lines) {
+                        const cleanLine = line.trim();
+                        if (!cleanLine.startsWith('data:')) continue;
+                        const dataStr = cleanLine.substring(5).trim();
+                        if (dataStr === '[DONE]') continue;
+
+                        try {
+                            const parsed = JSON.parse(dataStr);
+                            
+                            // Check if this is the final stats chunk
+                            if (parsed.id === 'inferroute-stream-end') {
+                                const timing = parsed.timing || {};
+                                const route = parsed.route || {};
+                                const usage = parsed.usage || {};
+
+                                sessionTotalRequests++;
+                                const cacheHit = route.cache_hit || false;
+                                if (cacheHit) {
+                                    sessionCacheHits++;
+                                    activateStep('stepCache', 'success', `Cache Hit (${route.cache_type})`);
+                                    activateStep('stepLimit', 'success', 'Bypassed Limiter (Cache hit)');
+                                    activateStep('stepExecute', 'success', 'Served directly from Redis');
+                                    activateStep('stepValidate', 'success', 'Validation Bypassed');
+                                    activateStep('stepCascade', 'success', 'No fallback needed');
+                                    
+                                    // Cache savings computation: equivalent GPT-4o-mini price
+                                    const savedToks = usage.total_tokens || 100;
+                                    sessionSavedTokens += savedToks;
+                                    sessionSavingsUsd += (savedToks / 1000.0) * 0.0020;
+                                } else {
+                                    // Dynamic pipeline steps
+                                    activateStep('stepExecute', 'success', `Executed on primary: ${route.selected_backend}`);
+                                    activateStep('stepValidate', 'success', 'All loops & syntax validation checks passed');
+                                    
+                                    if (route.fallback_count > 0) {
+                                        activateStep('stepCascade', 'failed', `Primary quality check failed. Cascaded to Cloud!`);
+                                    } else {
+                                        activateStep('stepCascade', 'success', 'Quality passed. Primary succeeded.');
+                                    }
+
+                                    // Local Ollama/vLLM costs $0, so savings is equivalent OpenAI price
+                                    if (['ollama', 'vllm'].includes(route.selected_backend)) {
+                                        const savedToks = usage.total_tokens || 100;
+                                        sessionSavedTokens += savedToks;
+                                        sessionSavingsUsd += (savedToks / 1000.0) * 0.0020; // estimate savings
+                                    }
+                                }
+
+                                updateDashboardUI(timing.ttft_ms || 0, timing.latency_ms || 0, cacheHit, route.selected_backend);
+                                setTimeout(fetchWalletBalance, 500);
+                                continue;
+                            }
+
+                            // Extract token delta content
+                            const choices = parsed.choices || [];
+                            if (choices.length > 0 && choices[0].delta && choices[0].delta.content) {
+                                if (!hasStartedText) {
+                                    assistantBubble.innerText = '';
+                                    hasStartedText = true;
+                                    activateStep('stepExecute', 'success');
+                                    activateStep('stepValidate', 'active');
+                                }
+                                assistantBubble.innerText += choices[0].delta.content;
+                                chatHistory.scrollTop = chatHistory.scrollHeight;
+                            }
+                        } catch (err) {
+                            console.error("Failed to parse SSE line JSON:", err);
+                        }
+                    }
+                }
+
+            } catch (err) {
+                assistantBubble.innerText = `Network Error: ${err}`;
+                activateStep('stepExecute', 'failed', `Network request aborted: ${err}`);
+            }
+        }
+
+        // Event hooks
+        sendBtn.addEventListener('click', sendMessage);
+        document.getElementById('rechargeBtn').addEventListener('click', rechargeWallet);
+        apiKeyInput.addEventListener('change', fetchWalletBalance);
+        promptInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+
+        // Initialize metrics on page load
+        fetchLifetimeMetrics();
+    </script>
+</body>
+</html>

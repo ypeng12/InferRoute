@@ -94,3 +94,30 @@ class RequestLog(Base):
             },
             "created_at": self.created_at.isoformat() if self.created_at else None,
         }
+
+
+class UserWallet(Base):
+    __tablename__ = "user_wallets"
+
+    tenant_id = Column(String(100), primary_key=True, index=True)
+    balance_usd = Column(Float, default=5.0)  # Default trial balance
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc)
+    )
+
+
+class TransactionLedger(Base):
+    __tablename__ = "transaction_ledger"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    tenant_id = Column(String(100), nullable=False, index=True)
+    amount_usd = Column(Float, nullable=False)  # positive for recharge, negative for deduction
+    transaction_type = Column(String(50), nullable=False)  # "recharge" or "deduction"
+    description = Column(String(200), nullable=True)
+    created_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        index=True
+    )

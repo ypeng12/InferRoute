@@ -14,7 +14,7 @@ from contextlib import asynccontextmanager
 from typing import Any, AsyncGenerator, Optional
 
 from fastapi import FastAPI, Depends, HTTPException, Security, status, Request, BackgroundTasks
-from fastapi.responses import StreamingResponse, Response
+from fastapi.responses import StreamingResponse, Response, HTMLResponse
 import redis.asyncio as aioredis
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -38,6 +38,7 @@ from inferroute.observability import (
     TTFT_LATENCY,
     FALLBACK_TOTAL,
     QUEUE_DEPTH,
+    DEDUP_HIT_TOTAL,
 )
 
 # ── Logging ───────────────────────────────────────────────────────────────────
@@ -55,6 +56,9 @@ ADAPTERS: dict[str, Any] = {
 router_engine = Router()
 validator = OutputValidator()
 cache_layer = CacheLayer()
+
+from inferroute.rate_limiter import AdaptiveConcurrencyLimiter
+concurrency_limiter = AdaptiveConcurrencyLimiter()
 
 
 # ── Lifespan ──────────────────────────────────────────────────────────────────
@@ -146,10 +150,32 @@ async def db_log_request(
                 timing_ttft_ms=ttft_ms,
                 timing_latency_ms=latency_ms,
             )
+            # Billing: deduct token cost from tenant's wallet
+            if tenant_id != "admin":
+                from sqlalchemy import select
+                from inferroute.models import UserWallet, TransactionLedger
+                
+                q_wallet = select(UserWallet).where(UserWallet.tenant_id == tenant_id)
+                wallet = (await session.execute(q_wallet)).scalar_one_or_none()
+                if not wallet:
+                    wallet = UserWallet(tenant_id=tenant_id, balance_usd=5.0)
+                    session.add(wallet)
+                    await session.flush()
+
+                if cost_usd > 0.0:
+                    wallet.balance_usd = max(0.0, wallet.balance_usd - cost_usd)
+                    ledger_entry = TransactionLedger(
+                        tenant_id=tenant_id,
+                        amount_usd=-cost_usd,
+                        transaction_type="deduction",
+                        description=f"LLM usage: {model} ({provider})"
+                    )
+                    session.add(ledger_entry)
+
             session.add(log_entry)
             await session.commit()
         except Exception as e:
-            logger.error(f"Failed to write request log: {e}")
+            logger.error(f"Failed to write request log & balance deduction: {e}")
 
 
 # ── Health / observability endpoints ─────────────────────────────────────────
@@ -226,6 +252,111 @@ async def list_providers():
     return {"providers": providers}
 
 
+@app.get("/", response_class=HTMLResponse, tags=["ui"])
+async def get_playground():
+    """Serves the interactive playground UI."""
+    import os
+    template_path = os.path.join(os.path.dirname(__file__), "templates", "playground.html")
+    if not os.path.exists(template_path):
+        raise HTTPException(status_code=404, detail="Playground UI template not found")
+    with open(template_path, "r", encoding="utf-8") as f:
+        html_content = f.read()
+    return HTMLResponse(content=html_content)
+
+
+@app.get("/v1/routing/metrics", tags=["ops"])
+async def routing_metrics():
+    """Fetch aggregated lifetime usage and cost savings from database."""
+    from sqlalchemy import select, func
+    async with async_session() as session:
+        # 1. Total requests
+        q_total = select(func.count(RequestLog.id))
+        total_requests = (await session.execute(q_total)).scalar() or 0
+
+        # 2. Cache hits (exact + prefix)
+        q_cache = select(func.count(RequestLog.id)).where(RequestLog.cache_hit == True)
+        cache_hits = (await session.execute(q_cache)).scalar() or 0
+
+        # 3. Deduplication hits
+        q_dedup = select(func.count(RequestLog.id)).where(RequestLog.dedup_hit == True)
+        dedup_hits = (await session.execute(q_dedup)).scalar() or 0
+
+        # 4. Total USD cost of executed cloud requests
+        q_cost = select(func.sum(RequestLog.cost_usd))
+        actual_cost = (await session.execute(q_cost)).scalar() or 0.0
+
+        # 5. Tokens saved (served by cache or local Ollama/vLLM)
+        q_saved_tokens = select(func.sum(RequestLog.prompt_tokens + RequestLog.completion_tokens))\
+            .where((RequestLog.cache_hit == True) | (RequestLog.provider.in_(["ollama", "vllm"])))
+        saved_tokens = (await session.execute(q_saved_tokens)).scalar() or 0
+
+        # Estimate savings: 0.002 USD per 1K tokens (reasonable average for GPT-4o-mini / Gemini-Flash mix)
+        estimated_saved_usd = (saved_tokens / 1000.0) * 0.002
+
+    return {
+        "total_requests": total_requests,
+        "cache_hits": cache_hits,
+        "dedup_hits": dedup_hits,
+        "actual_cost_usd": float(actual_cost),
+        "estimated_saved_usd": float(estimated_saved_usd),
+        "saved_tokens": int(saved_tokens)
+    }
+
+
+@app.get("/v1/billing/balance", tags=["billing"])
+async def get_balance(tenant_id: str = Depends(verify_api_key)):
+    """Fetch user wallet balance."""
+    from sqlalchemy import select
+    from inferroute.models import UserWallet
+
+    async with async_session() as session:
+        result = await session.execute(
+            select(UserWallet).where(UserWallet.tenant_id == tenant_id)
+        )
+        wallet = result.scalar_one_or_none()
+        if not wallet:
+            wallet = UserWallet(tenant_id=tenant_id, balance_usd=5.0)
+            session.add(wallet)
+            await session.commit()
+
+        return {"tenant_id": tenant_id, "balance_usd": wallet.balance_usd}
+
+
+@app.post("/v1/billing/recharge", tags=["billing"])
+async def recharge_wallet(amount: float = 10.0, tenant_id: str = Depends(verify_api_key)):
+    """Recharge wallet with simulated USD funds."""
+    from sqlalchemy import select
+    from inferroute.models import UserWallet, TransactionLedger
+
+    if amount <= 0:
+        raise HTTPException(status_code=400, detail="Recharge amount must be positive")
+
+    async with async_session() as session:
+        result = await session.execute(
+            select(UserWallet).where(UserWallet.tenant_id == tenant_id)
+        )
+        wallet = result.scalar_one_or_none()
+        if not wallet:
+            wallet = UserWallet(tenant_id=tenant_id, balance_usd=5.0)
+            session.add(wallet)
+
+        wallet.balance_usd += amount
+        ledger_entry = TransactionLedger(
+            tenant_id=tenant_id,
+            amount_usd=amount,
+            transaction_type="recharge",
+            description=f"Simulated wallet recharge"
+        )
+        session.add(ledger_entry)
+        await session.commit()
+
+        return {
+            "status": "success",
+            "recharged_amount": amount,
+            "new_balance_usd": wallet.balance_usd
+        }
+
+
 @app.get("/v1/routing/status", tags=["ops"])
 async def routing_status():
     """Real-time routing dashboard: CB states, percentile latencies, cache stats."""
@@ -263,6 +394,8 @@ async def chat_completions(
     background_tasks: BackgroundTasks,
     tenant_id: str = Depends(verify_api_key),
 ):
+    start_time = time.time()
+    is_owner = False
     try:
         body = await request.json()
     except Exception:
@@ -317,13 +450,35 @@ async def chat_completions(
     # 3. Request deduplication — check if identical request is in-flight
     is_owner = await cache_layer.try_acquire_dedup_lock(body)
     if not is_owner:
-        dedup_resp = await cache_layer.wait_for_dedup_result(body)
-        if dedup_resp:
-            REQUESTS_TOTAL.labels(tenant=tenant_id, model=model_req, backend="cache", status="completed").inc()
-            if stream_req:
-                return _stream_cached_response(dedup_resp)
-            return dedup_resp
-        # Wait timed out or owner failed — fall through to normal processing
+        if stream_req:
+            logger.info("[Gateway] Joining active in-flight stream deduplication...")
+            async def dedup_stream_generator():
+                DEDUP_HIT_TOTAL.labels(backend=model_req).inc()
+                try:
+                    async for chunk in cache_layer.wait_for_stream_dedup(body):
+                        yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
+                    yield "data: [DONE]\n\n"
+                except Exception as e:
+                    logger.error(f"[Gateway] Stream dedup consumer failed: {e}")
+                    yield f"data: {json.dumps({'error': f'Stream deduplication failed: {e}'})}\n\n"
+                    yield "data: [DONE]\n\n"
+            return StreamingResponse(
+                dedup_stream_generator(),
+                media_type="text/event-stream",
+                headers={"Cache-Control": "no-cache", "Connection": "keep-alive"}
+            )
+        else:
+            dedup_resp = await cache_layer.wait_for_dedup_result(body)
+            if dedup_resp:
+                REQUESTS_TOTAL.labels(tenant=tenant_id, model=model_req, backend="cache", status="completed").inc()
+                return dedup_resp
+            # Wait timed out or owner failed — fall through to normal processing
+
+    # We are the owner! Check concurrency limits before executing
+    slot_acquired = await concurrency_limiter.acquire()
+    if not slot_acquired:
+        await cache_layer.release_dedup_lock(body)
+        raise HTTPException(status_code=429, detail="Upstream concurrency limit reached. Please retry later.")
 
     # 4. Route
     decision = await router_engine.choose_backend(body)
@@ -344,6 +499,8 @@ async def chat_completions(
     finally:
         if is_owner:
             await cache_layer.release_dedup_lock(body)
+            latency_ms = (time.time() - start_time) * 1000.0
+            await concurrency_limiter.release(latency_ms)
 
 
 def _stream_cached_response(cached_resp: dict[str, Any]) -> StreamingResponse:
@@ -354,7 +511,20 @@ def _stream_cached_response(cached_resp: dict[str, Any]) -> StreamingResponse:
         content = choices[0].get("message", {}).get("content", "") if choices else ""
         yield f"data: {json.dumps({'id': chunk_id, 'object': 'chat.completion.chunk', 'choices': [{'index': 0, 'delta': {'role': 'assistant', 'content': ''}, 'finish_reason': None}]})}\n\n"
         yield f"data: {json.dumps({'id': chunk_id, 'object': 'chat.completion.chunk', 'choices': [{'index': 0, 'delta': {'role': None, 'content': content}, 'finish_reason': 'stop'}]})}\n\n"
-        yield f"data: {json.dumps({'id': chunk_id, 'object': 'chat.completion.chunk', 'choices': [], 'usage': cached_resp.get('usage', {})})}\n\n"
+        yield f"data: {json.dumps({
+            'id': 'inferroute-stream-end',
+            'object': 'chat.completion.chunk',
+            'choices': [],
+            'usage': cached_resp.get('usage', {}),
+            'timing': {'ttft_ms': 1.0, 'latency_ms': 1.0},
+            'route': {
+                'selected_backend': 'cache',
+                'fallback_count': 0,
+                'slo_met': True,
+                'cache_hit': True,
+                'cache_type': 'exact'
+            }
+        }, ensure_ascii=False)}\n\n"
         yield "data: [DONE]\n\n"
     return StreamingResponse(_gen(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache", "Connection": "keep-alive"})
@@ -385,6 +555,13 @@ async def handle_blocking_flow(
     try:
         logger.info(f"[Gateway] Invoking primary backend: {primary}")
         resp = await ADAPTERS[primary].generate(req)
+
+        if routing_policy == "speculative":
+            choices = resp.get("choices", [])
+            content = choices[0].get("message", {}).get("content", "") if choices else ""
+            quality_res = validator.validate_speculative_quality(content)
+            if not quality_res.ok:
+                raise ValueError(f"speculative_validation_failed: {quality_res.reason}")
 
         val_res = validator.validate_response(req, resp)
         if not val_res.ok:
@@ -470,6 +647,13 @@ async def handle_blocking_flow(
     await cache_layer.publish_dedup_result(req, resp)
     QUEUE_DEPTH.labels(backend=selected_backend).dec()
 
+    prompt_text = " ".join(m.get("content", "") for m in req.get("messages", []))
+    background_tasks.add_task(
+        router_engine.trie_router.register_host_prefix,
+        host=selected_backend,
+        prompt_text=prompt_text
+    )
+
     usage = resp.get("usage", {}) if resp else {}
     background_tasks.add_task(
         db_log_request,
@@ -526,6 +710,13 @@ async def handle_streaming_flow(
         prompt_tokens = 0
         completion_tokens = 0
         cost_usd = 0.0
+        chunk_idx = 0
+
+        is_spec = routing_policy == "speculative"
+        buffered_chunks = []
+        buffered_text = ""
+        buffer_limit = 15
+        buffer_validated = False
 
         QUEUE_DEPTH.labels(backend=primary).inc()
         cb = circuit_breaker.get_circuit_breaker(primary)
@@ -542,13 +733,46 @@ async def handle_streaming_flow(
                         ttft_ms = chunk["timing"].get("ttft_ms", ttft_ms)
                     continue
                 choices = chunk.get("choices", [])
+                content_chunk = ""
                 if choices and choices[0].get("delta", {}).get("content"):
+                    content_chunk = choices[0]["delta"]["content"]
                     if not ttft_recorded:
                         ttft_ms = (time.time() - start_time) * 1000.0
                         ttft_recorded = True
                         TTFT_LATENCY.labels(tenant=tenant_id, model=model_req, backend=primary).observe(ttft_ms / 1000.0)
-                    accumulated_content.append(choices[0]["delta"]["content"])
+                    accumulated_content.append(content_chunk)
+                
+                if is_spec and not buffer_validated:
+                    buffered_chunks.append(chunk)
+                    buffered_text += content_chunk
+                    if len(buffered_chunks) >= buffer_limit:
+                        val = validator.validate_speculative_quality(buffered_text)
+                        if not val.ok:
+                            logger.warning(f"[Gateway] Speculative quality check failed on primary: {val.reason}. Cascading to cloud backend.")
+                            raise ValueError(f"speculative_validation_failed: {val.reason}")
+                        else:
+                            buffer_validated = True
+                            for bc in buffered_chunks:
+                                yield f"data: {json.dumps(bc, ensure_ascii=False)}\n\n"
+                                await cache_layer.push_stream_chunk(req, chunk_idx, bc)
+                                chunk_idx += 1
+                    continue
+
                 yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
+                await cache_layer.push_stream_chunk(req, chunk_idx, chunk)
+                chunk_idx += 1
+
+            if is_spec and not buffer_validated:
+                val = validator.validate_speculative_quality(buffered_text)
+                if not val.ok:
+                    logger.warning(f"[Gateway] Speculative quality check failed (short stream): {val.reason}. Cascading to cloud backend.")
+                    raise ValueError(f"speculative_validation_failed: {val.reason}")
+                else:
+                    for bc in buffered_chunks:
+                        yield f"data: {json.dumps(bc, ensure_ascii=False)}\n\n"
+                        await cache_layer.push_stream_chunk(req, chunk_idx, bc)
+                        chunk_idx += 1
+
             await cb.record_success()
 
         except Exception as primary_exc:
@@ -583,6 +807,8 @@ async def handle_streaming_flow(
                                 TTFT_LATENCY.labels(tenant=tenant_id, model=model_req, backend=fallback).observe(ttft_ms / 1000.0)
                             accumulated_content.append(choices[0]["delta"]["content"])
                         yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
+                        await cache_layer.push_stream_chunk(req, chunk_idx, chunk)
+                        chunk_idx += 1
                     await cb_fb.record_success()
 
                 except Exception as fallback_exc:
@@ -600,7 +826,7 @@ async def handle_streaming_flow(
                     REQUESTS_TOTAL.labels(tenant=tenant_id, model=model_req, backend=selected_backend, status="failed").inc()
                     await router_engine.record_metrics(selected_backend, 0.0, latency_ms, success=False)
                     QUEUE_DEPTH.labels(backend=selected_backend).dec()
-                    await cache_layer.publish_dedup_result(req, None)
+                    await cache_layer.publish_stream_error(req, str(fallback_exc))
                     yield f"data: {json.dumps({'error': f'All backends failed: {fallback_exc}'})}\n\n"
                     yield "data: [DONE]\n\n"
                     return
@@ -609,7 +835,7 @@ async def handle_streaming_flow(
                 REQUESTS_TOTAL.labels(tenant=tenant_id, model=model_req, backend=primary, status="failed").inc()
                 await router_engine.record_metrics(primary, 0.0, latency_ms, success=False)
                 QUEUE_DEPTH.labels(backend=primary).dec()
-                await cache_layer.publish_dedup_result(req, None)
+                await cache_layer.publish_stream_error(req, str(primary_exc))
                 yield f"data: {json.dumps({'error': f'Primary failed: {primary_exc}'})}\n\n"
                 yield "data: [DONE]\n\n"
                 return
@@ -627,7 +853,7 @@ async def handle_streaming_flow(
             status_str = "validation_failed"
             error_msg = f"Stream validation failed: {val_res.reason}"
             logger.error(error_msg)
-            await cache_layer.publish_dedup_result(req, None)
+            await cache_layer.publish_stream_error(req, error_msg)
             yield f"data: {json.dumps({'error': error_msg})}\n\n"
             yield "data: [DONE]\n\n"
         else:
@@ -645,6 +871,13 @@ async def handle_streaming_flow(
             await cache_layer.store_exact(req, full_resp)
             await cache_layer.publish_dedup_result(req, full_resp)
 
+            prompt_text = " ".join(m.get("content", "") for m in req.get("messages", []))
+            background_tasks.add_task(
+                router_engine.trie_router.register_host_prefix,
+                host=selected_backend,
+                prompt_text=prompt_text
+            )
+
             stats_chunk = {
                 "id": "inferroute-stream-end",
                 "object": "chat.completion.chunk",
@@ -657,6 +890,9 @@ async def handle_streaming_flow(
                 "route": {"selected_backend": selected_backend, "fallback_count": fallback_count, "slo_met": slo_met},
             }
             yield f"data: {json.dumps(stats_chunk, ensure_ascii=False)}\n\n"
+            await cache_layer.push_stream_chunk(req, chunk_idx, stats_chunk)
+            chunk_idx += 1
+            await cache_layer.publish_stream_end(req, chunk_idx)
             yield "data: [DONE]\n\n"
 
         background_tasks.add_task(

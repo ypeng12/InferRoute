@@ -259,3 +259,161 @@ class CacheLayer:
             logger.debug(f"[Cache] Published dedup result to channel={channel[:32]}…")
         except Exception as e:
             logger.error(f"[Cache] Dedup publish error: {e}")
+
+    # ── Streaming request deduplication ───────────────────────────────────────
+
+    def _stream_chunks_key(self, req: dict[str, Any]) -> str:
+        clean = self._normalize_req(req)
+        canonical = json.dumps(clean, sort_keys=True, ensure_ascii=False)
+        digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+        return f"inferroute:dedup:stream_chunks:{digest}"
+
+    def _stream_channel(self, req: dict[str, Any]) -> str:
+        clean = self._normalize_req(req)
+        canonical = json.dumps(clean, sort_keys=True, ensure_ascii=False)
+        digest = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+        return f"inferroute:dedup:stream_channel:{digest}"
+
+    async def push_stream_chunk(
+        self, req: dict[str, Any], index: int, chunk: dict[str, Any]
+    ) -> None:
+        """Push a stream chunk to Redis list and publish to stream channel."""
+        client = get_redis_client()
+        if client is None:
+            return
+        try:
+            list_key = self._stream_chunks_key(req)
+            channel = self._stream_channel(req)
+            payload = json.dumps({"index": index, "chunk": chunk}, ensure_ascii=False)
+            
+            # Pipe commands to ensure atomic push + publish
+            pipe = client.pipeline()
+            pipe.rpush(list_key, payload)
+            pipe.expire(list_key, 120)  # 2 minutes TTL
+            pipe.publish(channel, payload)
+            await pipe.execute()
+        except Exception as e:
+            logger.error(f"[Cache] Push stream chunk error: {e}")
+
+    async def publish_stream_end(self, req: dict[str, Any], final_index: int) -> None:
+        """Signal the end of a stream to all waiters."""
+        client = get_redis_client()
+        if client is None:
+            return
+        try:
+            list_key = self._stream_chunks_key(req)
+            channel = self._stream_channel(req)
+            payload = json.dumps({"index": "done", "final_index": final_index}, ensure_ascii=False)
+            
+            pipe = client.pipeline()
+            pipe.rpush(list_key, payload)
+            pipe.expire(list_key, 120)
+            pipe.publish(channel, payload)
+            await pipe.execute()
+        except Exception as e:
+            logger.error(f"[Cache] Publish stream end error: {e}")
+
+    async def publish_stream_error(self, req: dict[str, Any], err_msg: str) -> None:
+        """Signal a stream error to all waiters."""
+        client = get_redis_client()
+        if client is None:
+            return
+        try:
+            list_key = self._stream_chunks_key(req)
+            channel = self._stream_channel(req)
+            payload = json.dumps({"index": "error", "error": err_msg}, ensure_ascii=False)
+            
+            pipe = client.pipeline()
+            pipe.rpush(list_key, payload)
+            pipe.expire(list_key, 120)
+            pipe.publish(channel, payload)
+            await pipe.execute()
+        except Exception as e:
+            logger.error(f"[Cache] Publish stream error: {e}")
+
+    async def wait_for_stream_dedup(
+        self, req: dict[str, Any]
+    ) -> Any:
+        """
+        Wait for stream chunks from the owner request.
+        Yields chunk dicts in real-time.
+        """
+        client = get_redis_client()
+        if client is None:
+            return
+
+        channel = self._stream_channel(req)
+        list_key = self._stream_chunks_key(req)
+        
+        # Subscribe to pubsub channel first to buffer incoming chunks
+        pubsub = client.pubsub()
+        await pubsub.subscribe(channel)
+        
+        try:
+            # Read any chunks that have already been generated and cached in the list
+            history = await client.lrange(list_key, 0, -1)
+            history_chunks = []
+            stream_finished = False
+            stream_error = None
+            
+            for item in history:
+                if isinstance(item, bytes):
+                    item = item.decode("utf-8")
+                data = json.loads(item)
+                idx = data.get("index")
+                if idx == "done":
+                    stream_finished = True
+                elif idx == "error":
+                    stream_error = data.get("error", "Stream error")
+                else:
+                    history_chunks.append((idx, data.get("chunk")))
+            
+            # Sort history chunks by index to ensure proper sequence
+            history_chunks.sort(key=lambda x: x[0])
+            for _, chunk in history_chunks:
+                yield chunk
+                
+            if stream_finished:
+                return
+            if stream_error:
+                raise ValueError(stream_error)
+                
+            # Consume live chunks from pub/sub channel
+            next_expected_index = len(history_chunks)
+            deadline = asyncio.get_event_loop().time() + DEDUP_LOCK_TTL_S
+            
+            while asyncio.get_event_loop().time() < deadline:
+                try:
+                    message = await asyncio.wait_for(
+                        pubsub.get_message(ignore_subscribe_messages=True),
+                        timeout=1.0
+                    )
+                    if message and message.get("type") == "message":
+                        data_str = message["data"]
+                        if isinstance(data_str, bytes):
+                            data_str = data_str.decode("utf-8")
+                        data = json.loads(data_str)
+                        idx = data.get("index")
+                        if idx == "done":
+                            break
+                        elif idx == "error":
+                            raise ValueError(data.get("error", "Stream error"))
+                        else:
+                            if isinstance(idx, int) and idx >= next_expected_index:
+                                yield data["chunk"]
+                                next_expected_index = idx + 1
+                except asyncio.TimeoutError:
+                    # Safety check: if lock is gone, check if done was written to list
+                    lock_exists = await client.exists(self._dedup_lock_key(req))
+                    if not lock_exists:
+                        history = await client.lrange(list_key, 0, -1)
+                        for item in history:
+                            if isinstance(item, bytes):
+                                item = item.decode("utf-8")
+                            d = json.loads(item)
+                            if d.get("index") == "done":
+                                return
+                        break
+        finally:
+            await pubsub.unsubscribe(channel)
+            await pubsub.aclose()
