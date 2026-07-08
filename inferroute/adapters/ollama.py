@@ -16,6 +16,7 @@ import httpx
 from inferroute.adapters.base import BaseAdapter
 from inferroute.config import settings
 from inferroute.observability import tracer, PROVIDER_COST_USD_TOTAL
+from inferroute.adapters.mock_generator import generate_mock_reply
 
 logger = logging.getLogger("inferroute.adapters.ollama")
 
@@ -210,7 +211,9 @@ class OllamaAdapter(BaseAdapter):
 
             await asyncio.sleep(0.18)  # local model: ~180ms
 
-            content = "This is a mock response from local Ollama. Running llama3 in simulation mode — fast, free, and private."
+            messages = req.get("messages", [])
+            prompt = messages[-1].get("content", "") if messages else ""
+            content = generate_mock_reply(prompt, "ollama")
             if "response_format" in req and req["response_format"].get("type") == "json_schema":
                 content = '{"invoice_id": "OLLAMA-MOCK-001", "amount": 12.50}'
 
@@ -242,7 +245,9 @@ class OllamaAdapter(BaseAdapter):
         prompt_len = sum(len(m.get("content", "")) for m in req.get("messages", []))
         prompt_tokens = prompt_len // 4 + 5
 
-        content = "This is a streaming mock from local Ollama. Confirming local-first routing, zero cost, and fast TTFT."
+        messages = req.get("messages", [])
+        prompt = messages[-1].get("content", "") if messages else ""
+        content = generate_mock_reply(prompt, "ollama")
         if "response_format" in req and req["response_format"].get("type") == "json_schema":
             content = '{"invoice_id": "OLLAMA-STREAM-001", "amount": 8.00}'
 
