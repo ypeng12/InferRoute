@@ -12,7 +12,8 @@
 
 ## 📖 Introduction
 
-**InferRoute** is a production-grade, low-latency LLM inference router and observability gateway. It serves as an intelligent proxy layer sitting between your client applications/AI agents and multiple backend LLM engines (such as local engines like **vLLM / Ollama** and commercial cloud providers like **OpenAI / Google Gemini**).
+> [!IMPORTANT]
+> **InferRoute is NOT a Chatbot application.** It is a high-performance **LLM Inference Gateway** and reliability proxy layer designed to sit between client applications/AI agents and backend model engines (like local vLLM/Ollama and commercial OpenAI/Gemini APIs).
 
 Rather than statically pinning your application to a single expensive cloud endpoint, InferRoute dynamically routes prompts based on **real-time quality validation, cost constraints, latency tracking, and warm KV-cache affinity**, automatically saving up to **60%+ in API costs** while protecting SLAs.
 
@@ -51,7 +52,9 @@ InferRoute includes a built-in interactive control center panel served at the ro
 * **Live Cost Dashboard**: Displays money saved ($ USD), tokens saved, TTFT latency, and Redis cache hit rate.
 * **Request Pipeline Visualizer**: Renders a vertical stepper showing step-by-step processing of the query (Cache checking, Limiter checking, Node executing, and Cascades).
 * **Simulated Wallet & Recharge**: Top-right wallet indicator showing current credits (e.g., `$5.00` trial credit) with a simulated `+ $10` recharge button.
-* **Chaos Engineering & Failure Injection**: (Coming soon) A panel to manually kill or throttle model nodes, observing the circuit-breaker turning Red and routing self-healing in real-time.
+* **Chaos Engineering & Failure Injection**: A panel to manually kill or throttle model nodes, observing the circuit-breaker turning Red and routing self-healing in real-time.
+
+For detailed performance, concurrency, and cost reports under heavy loads, check out the **[Benchmark Report](file:///c:/Users/pengy/OneDrive/Desktop/InferRoute/docs/benchmark.md)**.
 
 ---
 
@@ -149,6 +152,13 @@ for chunk in response:
     if content:
         print(content, end="", flush=True)
 ```
+
+## 📚 Project Documentation
+
+Explore the following detailed guides for in-depth engineering breakdowns:
+* **[Performance & Cost Benchmarks](file:///c:/Users/pengy/OneDrive/Desktop/InferRoute/docs/benchmark.md)**: Concrete metrics, cache stampede statistics, and reproduction logs.
+* **[Inference Gateway Architecture](file:///c:/Users/pengy/OneDrive/Desktop/InferRoute/docs/architecture.md)**: Sequence diagrams of the request lifecycle and core sub-components.
+* **[Failure Injection & High Availability](file:///c:/Users/pengy/OneDrive/Desktop/InferRoute/docs/failure-injection.md)**: Details on fail-open mechanisms and circuit breaker status thresholds.
 
 ---
 

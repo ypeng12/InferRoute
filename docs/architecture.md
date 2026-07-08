@@ -1,0 +1,88 @@
+# 🏗️ InferRoute Gateway Request Lifecycle & Architecture
+
+This document breaks down the internal architecture of **InferRoute** and traces a request step-by-step through the gateway pipeline.
+
+---
+
+## 🔄 Request Lifecycle Diagram
+
+The following diagram illustrates the path of a client request (e.g. from an SDK calling `/v1/chat/completions`) as it flows through the gateway gates:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Client as Client App / SDK
+    participant GW as InferRoute Gateway
+    participant Auth as Auth & Wallet Gate
+    participant Cache as Cache Layer (Redis)
+    participant Limiter as Vegas Adaptive Limiter
+    participant Router as Routing Engine
+    participant Model as LLM Upstream (Ollama/vLLM/OpenAI)
+    participant Audit as DB Audit & Billing (Postgres)
+
+    Client->>GW: POST /v1/chat/completions (Stream=True)
+    GW->>Auth: verify_api_key & check_wallet_balance
+    alt Wallet Balance <= $0.00
+        Auth-->>Client: 402 Payment Required (Blocked)
+    else Balance OK
+        Auth-->>GW: Tenant ID Resolved (e.g. acme_corp)
+        GW->>Cache: try_acquire_dedup_lock (Exact Match check)
+        alt Cache Hit
+            Cache-->>Client: Stream Cached chunks directly from Redis
+        else Cache Miss
+            GW->>Cache: trie_cache.match_longest_prefix
+            Cache-->>GW: Return Cache-Affinity Weight
+            GW->>Limiter: acquire_slot (Adaptive Vegas Limit)
+            alt Concurrency Limit Exceeded
+                Limiter-->>Client: 429 Too Many Requests / Auto-Fallback
+            else Slot Acquired
+                GW->>Router: choose_backend (Scoring: latency, CB, cost, cache-affinity)
+                Router-->>GW: Selected Backend (e.g. Ollama)
+                GW->>Model: Invoke Model Stream
+                Model-->>GW: Yield Stream Chunks
+                GW->>Client: Forward Stream Chunks
+                Note over GW,Model: First 15 chunks buffered & evaluated for loops
+                alt Loop/Repetitive Garbage Detected
+                    GW->>Model: Cancel speculative stream
+                    GW->>Router: Trigger Fallback Cascade
+                    Router->>Model: Invoke Cloud Backend (OpenAI)
+                    Model-->>Client: Stream Cloud response
+                end
+                GW->>Limiter: release_slot
+                GW->>Audit: db_log_request (Background log & wallet debit)
+                Audit->>Audit: Deduct cost_usd from UserWallet & log TransactionLedger
+            end
+        end
+    end
+```
+
+---
+
+## 🛠️ Key Architectural Components
+
+### 1. Unified Authentication & Credit Enforcement ([auth.py](file:///c:/Users/pengy/OneDrive/Desktop/InferRoute/inferroute/auth.py))
+* Checks the client token against valid static API keys to resolve the tenant ID.
+* Queries `UserWallet` in the database. If balance is $\le 0.0$, raises `402 Payment Required`.
+* **Fail-Open Design**: If the database throws a connection error (e.g., PostgreSQL is offline), the gate logs a warning and permits the request to continue. This prioritizes business availability over strict credit locks.
+
+### 2. Double-Cache Optimization Layer ([cache.py](file:///c:/Users/pengy/OneDrive/Desktop/InferRoute/inferroute/cache.py))
+* **Exact Deduplication Lock**: Avoids "Cache Stampede". If an identical prompt is already being processed by the gateway, the second request does not hit the upstream model. Instead, it subscribes to a Redis Pub/Sub channel associated with that prompt and streams the same response simultaneously.
+* **Prefix-Affinity Cache Trie**: Uses a **Radix Trie** in `router_trie.py` to match the longest prefix of the incoming prompt. The matched prefix length is used to boost the score of the backend node holding that KV-cache, bypassing prefill computation.
+
+### 3. Vegas Congestion Rate Limiter ([rate_limiter.py](file:///c:/Users/pengy/OneDrive/Desktop/InferRoute/inferroute/rate_limiter.py))
+* Tracks latency metrics dynamically using a feedback loop.
+* Computes queue sizes based on the difference between the minimum RTT (`base_rtt`) and the moving average RTT.
+* Auto-adjusts concurrency limits:
+  * If queue size is low: `limit = limit + 1`
+  * If queue size is high: `limit = max(1, limit - delta)` (multiplicative decrease).
+* Restricts incoming requests when limits are breached, shifting traffic to cloud fallbacks.
+
+### 4. Smart Decision Router & Circuit Breakers ([router.py](file:///c:/Users/pengy/OneDrive/Desktop/InferRoute/inferroute/router.py))
+* Aggregates weights for cost, failure history, target SLO, circuit-breaker status, and KV-cache affinity.
+* Computes a probability distribution using a softmax function or picks the highest-ranking candidate based on the active policy (`Speculative`, `Latency-First`, `Cost-First`, or `Load-Balanced`).
+* Automatically switches to backup cloud providers if the primary node's circuit breaker enters the `OPEN` state.
+
+### 5. Speculative Stream Quality Validator ([validator.py](file:///c:/Users/pengy/OneDrive/Desktop/InferRoute/inferroute/validator.py))
+* Inspects stream chunks as they are generated by cheap/local endpoints.
+* Evaluates repetitive token loops (e.g. model output repeating the same phrase).
+* If a loop or syntax error is identified, cancels the active stream asynchronously, blocks billing logging for the local failure, and opens a secondary cloud stream to transparently complete the request for the client.
