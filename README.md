@@ -1,4 +1,4 @@
-# 🎯 InferRoute: Enterprise LLM Inference Router & Observability Gateway
+# 🎯 InferRoute: High-Availability LLM Inference Router & Observability Gateway
 
 <p align="center">
   <img src="https://img.shields.io/badge/License-MIT-emerald.svg" alt="License">
@@ -13,23 +13,23 @@
 ## 📖 Introduction
 
 > [!IMPORTANT]
-> **InferRoute is NOT a Chatbot application.** It is a high-performance **LLM Inference Gateway** and reliability proxy layer designed to sit between client applications/AI agents and backend model engines (like local vLLM/Ollama and commercial OpenAI/Gemini APIs).
+> **InferRoute is NOT a Chatbot application.** It is an **LLM Inference Gateway** and reliability proxy layer designed to sit between client applications/AI agents and backend model engines (like local vLLM/Ollama and commercial OpenAI/Gemini APIs).
 
-Rather than statically pinning your application to a single expensive cloud endpoint, InferRoute dynamically routes prompts based on **real-time quality validation, cost constraints, latency tracking, and warm KV-cache affinity**, automatically saving up to **60%+ in API costs** while protecting SLAs.
+Rather than statically pinning your application to a single expensive cloud endpoint, InferRoute dynamically routes prompts based on **real-time quality validation, cost constraints, latency tracking, and warm KV-cache affinity**, demonstrating up to **60%+ in API cost savings in simulated benchmark scenarios** while protecting SLAs.
 
 ---
 
 ## ⚡ Key Technical Highlights
 
-InferRoute is built for high-throughput, sub-millisecond overhead, and self-healing reliability. It features:
+InferRoute is designed for high-throughput, low routing overhead, and self-healing reliability. It features:
 
 ### 1. 🔄 Distributed Streaming request Deduplication
 * **The Problem**: High-concurrency AI systems frequently experience "Cache Stampede" when multiple users query the exact same long prompt concurrently, causing redundant expensive model invocations.
-* **Our Solution**: Implemented a distributed lock mechanism using Redis. When duplicate requests arrive at the same millisecond, only the first caller invokes the LLM. Subsequent callers automatically subscribe to the first caller's stream via **Redis Pub/Sub**, broadcasting token chunks simultaneously with zero duplicate API fees.
+* **Our Solution**: Implemented a distributed lock mechanism using Redis. When duplicate requests arrive at the same millisecond, only the first caller invokes the LLM. Subsequent callers automatically subscribe to the first caller's stream via **Redis Pub/Sub**, broadcasting token chunks simultaneously to avoid duplicate API fees.
 
 ### 2. 🌳 Radix Trie-Based KV-Cache Affinity Routing
 * **The Problem**: Pre-filling long prompts (e.g., system prompts, RAG documents) takes up to 80% of LLM inference latency. Routing queries randomly negates the performance benefits of local KV caches.
-* **Our Solution**: Implemented an in-memory **Radix Trie (Prefix Tree)** matching engine. By hashing and tracking prompt prefixes, the router identifies which local GPU node holds the warm KV cache and prioritizes routing queries to that specific node, reducing **首字延迟 (TTFT) by up to 80%**.
+* **Our Solution**: Implemented an in-memory **Radix Trie (Prefix Tree)** matching engine. By hashing and tracking prompt prefixes, the router identifies which local GPU node holds the warm KV cache and prioritizes routing queries to that specific node, reducing **首字延迟 (TTFT) by up to 80% in simulated benchmark tests**.
 
 ### 3. 🛡️ Vegas-Style Adaptive Concurrency Control
 * **The Problem**: Static rate limits (QPS/RPM) fail to protect local GPU engines from Out-Of-Memory (OOM) failures under sudden spikes.
@@ -37,7 +37,7 @@ InferRoute is built for high-throughput, sub-millisecond overhead, and self-heal
 
 ### 4. 🔀 Speculative Fallback Cascading & Quality Checks
 * **The Problem**: Cheap local models are fast and free, but prone to formatting failures, infinite loops, or repetitive garbage outputs.
-* **Our Solution**: Integrates a stream-buffering validator. It inspects the first few tokens of cheap local model outputs. If a repetitive pattern is detected, it triggers **instant speculative cancellation** and transparently cascades the request to high-quality cloud models (e.g., GPT-4o) in the middle of the request lifecycle, ensuring zero service disruption.
+* **Our Solution**: Integrates a stream-buffering validator. It inspects the first few tokens of cheap local model outputs. If a repetitive pattern is detected, it triggers **instant speculative cancellation** and transparently cascades the request to high-quality cloud models (e.g., GPT-4o) in the middle of the request lifecycle, minimizing service disruption.
 
 ### 5. 💳 Multi-Tenant Billing & Simulated Wallet
 * Built-in multi-tenant isolation with token-cost calculation.
@@ -54,7 +54,7 @@ InferRoute includes a built-in interactive control center panel served at the ro
 * **Simulated Wallet & Recharge**: Top-right wallet indicator showing current credits (e.g., `$5.00` trial credit) with a simulated `+ $10` recharge button.
 * **Chaos Engineering & Failure Injection**: A panel to manually kill or throttle model nodes, observing the circuit-breaker turning Red and routing self-healing in real-time.
 
-For detailed performance, concurrency, and cost reports under heavy loads, check out the **[Benchmark Report](file:///c:/Users/pengy/OneDrive/Desktop/InferRoute/docs/benchmark.md)**.
+For detailed performance, concurrency, and cost reports under heavy loads, check out the **[Benchmark Report](docs/benchmark.md)**.
 
 ---
 
@@ -128,7 +128,7 @@ Open **[http://127.0.0.1:8080](http://127.0.0.1:8080)** in your browser to inter
 
 ## 🛠️ Unified Integration (OpenAI Drop-In)
 
-InferRoute is 100% compatible with the OpenAI API format. You can switch your existing codebases to run through InferRoute in just one line:
+InferRoute is compatible with the standard OpenAI API chat completions format. You can switch your existing codebases to run through InferRoute in just one line:
 
 ### Python Client
 ```python
@@ -156,9 +156,9 @@ for chunk in response:
 ## 📚 Project Documentation
 
 Explore the following detailed guides for in-depth engineering breakdowns:
-* **[Performance & Cost Benchmarks](file:///c:/Users/pengy/OneDrive/Desktop/InferRoute/docs/benchmark.md)**: Concrete metrics, cache stampede statistics, and reproduction logs.
-* **[Inference Gateway Architecture](file:///c:/Users/pengy/OneDrive/Desktop/InferRoute/docs/architecture.md)**: Sequence diagrams of the request lifecycle and core sub-components.
-* **[Failure Injection & High Availability](file:///c:/Users/pengy/OneDrive/Desktop/InferRoute/docs/failure-injection.md)**: Details on fail-open mechanisms and circuit breaker status thresholds.
+* **[Performance & Cost Benchmarks](docs/benchmark.md)**: Concrete metrics, cache stampede statistics, and reproduction logs.
+* **[Inference Gateway Architecture](docs/architecture.md)**: Sequence diagrams of the request lifecycle and core sub-components.
+* **[Failure Injection & High Availability](docs/failure-injection.md)**: Details on fail-open mechanisms and circuit breaker status thresholds.
 
 ---
 

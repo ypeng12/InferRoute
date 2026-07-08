@@ -151,8 +151,8 @@ async def test_exact_cache_ignores_routing_and_metadata_keys(cache):
 
 
 @pytest.mark.asyncio
-async def test_prefix_cache_hit_on_shared_prefix(cache):
-    """A request with the same prefix should get a prefix cache hit."""
+async def test_prefix_cache_disabled(cache):
+    """Verify that lookup_prefix always returns None as prefix answer caching is disabled."""
     layer, store, redis = cache
 
     long_req = {
@@ -171,9 +171,7 @@ async def test_prefix_cache_hit_on_shared_prefix(cache):
         ]
     }
     result = await layer.lookup_prefix(prefix_req)
-    # Prefix match is approximate; this may not hit if prefix is shorter than key length
-    # The test verifies the lookup doesn't crash and returns None or dict
-    assert result is None or isinstance(result, dict)
+    assert result is None
 
 
 @pytest.mark.asyncio

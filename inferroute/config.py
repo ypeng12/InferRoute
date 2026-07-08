@@ -18,6 +18,7 @@ class Settings(BaseSettings):
 
     # ── OpenAI ────────────────────────────────────────────────────────────────
     OPENAI_API_KEY: str = Field(default="mock-key", validation_alias="OPENAI_API_KEY")
+    MOCK_OPENAI: bool = Field(default=True, validation_alias="MOCK_OPENAI")
 
     # ── Google Gemini ─────────────────────────────────────────────────────────
     GEMINI_API_KEY: str = Field(default="mock-gemini-key", validation_alias="GEMINI_API_KEY")

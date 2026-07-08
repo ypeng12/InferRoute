@@ -242,21 +242,48 @@ class Router:
         policy = routing_opts.get("policy", "latency")
 
         # ── Hard pins ────────────────────────────────────────────────────────
+        pinned_backend = None
+        pinned_fallback = None
+        pinned_reason = None
+
         if model_req in ("gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"):
-            ROUTING_DECISION_TOTAL.labels(policy="hard_pin", backend="openai").inc()
-            return RoutingDecision("openai", "gemini", f"Pinned to OpenAI: {model_req}", True, "hard_pin")
+            pinned_backend = "openai"
+            pinned_fallback = "gemini"
+            pinned_reason = f"Pinned to OpenAI: {model_req}"
+        elif model_req in ("gemini-1.5-flash", "gemini-1.5-pro", "gemini-1.0-pro"):
+            pinned_backend = "gemini"
+            pinned_fallback = "openai"
+            pinned_reason = f"Pinned to Gemini: {model_req}"
+        elif model_req in ("meta-llama/Meta-Llama-3-8B-Instruct", "llama-3-8b"):
+            pinned_backend = "vllm"
+            pinned_fallback = "openai"
+            pinned_reason = f"Pinned to vLLM: {model_req}"
+        elif model_req.startswith("ollama/") or model_req in ("llama3", "mistral", "phi3"):
+            pinned_backend = "ollama"
+            pinned_fallback = "vllm"
+            pinned_reason = f"Pinned to Ollama: {model_req}"
 
-        if model_req in ("gemini-1.5-flash", "gemini-1.5-pro", "gemini-1.0-pro"):
-            ROUTING_DECISION_TOTAL.labels(policy="hard_pin", backend="gemini").inc()
-            return RoutingDecision("gemini", "openai", f"Pinned to Gemini: {model_req}", True, "hard_pin")
+        if pinned_backend:
+            allow_fallback_pinned = routing_opts.get("allow_fallback_for_pinned", False)
+            if allow_fallback_pinned:
+                cb = circuit_breaker.get_circuit_breaker(pinned_backend)
+                cb_allowed = await cb.allow_request()
+                if not cb_allowed:
+                    logger.warning(
+                        f"[Router] Pinned backend '{pinned_backend}' circuit breaker is OPEN. "
+                        f"Falling back to '{pinned_fallback}' because allow_fallback_for_pinned is enabled."
+                    )
+                    ROUTING_DECISION_TOTAL.labels(policy="hard_pin_fallback", backend=pinned_fallback).inc()
+                    return RoutingDecision(
+                        pinned_fallback,
+                        None,
+                        f"Fallback from pinned {pinned_backend} (circuit breaker OPEN): {model_req}",
+                        True,
+                        "hard_pin_fallback"
+                    )
 
-        if model_req in ("meta-llama/Meta-Llama-3-8B-Instruct", "llama-3-8b"):
-            ROUTING_DECISION_TOTAL.labels(policy="hard_pin", backend="vllm").inc()
-            return RoutingDecision("vllm", "openai", f"Pinned to vLLM: {model_req}", True, "hard_pin")
-
-        if model_req.startswith("ollama/") or model_req in ("llama3", "mistral", "phi3"):
-            ROUTING_DECISION_TOTAL.labels(policy="hard_pin", backend="ollama").inc()
-            return RoutingDecision("ollama", "vllm", f"Pinned to Ollama: {model_req}", True, "hard_pin")
+            ROUTING_DECISION_TOTAL.labels(policy="hard_pin", backend=pinned_backend).inc()
+            return RoutingDecision(pinned_backend, pinned_fallback, pinned_reason, True, "hard_pin")
 
         # ── Candidate filtering ───────────────────────────────────────────────
         allow_local = routing_opts.get("allow_local", True)

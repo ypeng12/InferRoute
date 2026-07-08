@@ -428,26 +428,7 @@ async def chat_completions(
             return _stream_cached_response(cached_resp)
         return cached_resp
 
-    # 2. Prefix cache lookup (hint — may trigger a miss in exact cache)
-    prefix_resp = await cache_layer.lookup_prefix(body)
-    if prefix_resp and not stream_req:
-        REQUESTS_TOTAL.labels(tenant=tenant_id, model=model_req, backend="cache", status="completed").inc()
-        background_tasks.add_task(
-            db_log_request,
-            tenant_id=tenant_id, model=prefix_resp.get("model", model_req),
-            logical_model=model_req, provider="cache",
-            prompt_tokens=prefix_resp.get("usage", {}).get("prompt_tokens", 0),
-            completion_tokens=prefix_resp.get("usage", {}).get("completion_tokens", 0),
-            cost_usd=0.0, cache_hit=True, cache_type="prefix",
-            prefix_cache_hit=True, dedup_hit=False,
-            primary_backend="cache", selected_backend="cache", fallback_count=0,
-            routing_policy="cache", circuit_state="CLOSED", slo_met=True,
-            status_str="completed", error_message=None,
-            queue_ms=0.0, ttft_ms=1.0, latency_ms=1.0,
-        )
-        return prefix_resp
-
-    # 3. Request deduplication — check if identical request is in-flight
+    # 2. Request deduplication — check if identical request is in-flight
     is_owner = await cache_layer.try_acquire_dedup_lock(body)
     if not is_owner:
         if stream_req:

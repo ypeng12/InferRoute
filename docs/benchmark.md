@@ -1,18 +1,18 @@
 # 📊 InferRoute Performance & Cost Benchmark Report
 
-This document presents the benchmark results of **InferRoute** under various simulated high-concurrency loads, demonstrating how the gateway achieves **60%+ API cost savings** and up to **80%+ reductions in的首字延迟 (TTFT)**.
+This document presents the benchmark results of **InferRoute** under various simulated high-concurrency loads, demonstrating how the gateway achieves up to **60% API cost savings** and up to **80% reductions in的首字延迟 (TTFT)** in simulated scenarios.
 
-All benchmarks were executed using the included [Locust Load Test Suite](file:///c:/Users/pengy/OneDrive/Desktop/InferRoute/tests/locustfile.py) under Headless Mode.
+All benchmarks were executed using the included [Locust Load Test Suite](../tests/locustfile.py) under Headless Mode.
 
 ---
 
 ## 🚀 Executive Summary Table
 
-| Scenario | Baseline (Direct Call) | InferRoute (Gateway) | Improvement |
+| Scenario | Baseline (Direct Call) | InferRoute (Gateway) | Improvement (Simulated) |
 | :--- | :--- | :--- | :--- |
-| **Repeated Prompt Burst** | N duplicate cloud calls | Coalesced into 1 upstream call | **98.0% cost saved** (for N=50) |
-| **Repeated Long Prefix** | Normal routing (cold cache) | Prefix-affinity Radix Trie routing | **89.1% TTFT reduction** |
-| **Provider Degradation** | Primary backend timeout/error | Automatic fallback path cascade | **100% request recovery** (self-healed) |
+| **Repeated Prompt Burst** | N duplicate cloud calls | Coalesced into 1 upstream call | **98.0% cost saved** (simulated N=50) |
+| **Repeated Long Prefix** | Normal routing (cold cache) | Prefix-affinity Radix Trie routing | **89.1% TTFT reduction** (simulated cache hit) |
+| **Provider Degradation** | Primary backend timeout/error | Automatic fallback path cascade | **100% request recovery** (mock fallback) |
 
 ---
 
@@ -32,10 +32,10 @@ With InferRoute (Streaming Deduplication):
 ```
 
 #### Results:
-* **Total Tokens Consumed**: 7,500 tokens (Without) vs. 150 tokens (With).
-* **Cloud Provider Cost**: `$0.1000` USD (Without) vs. `$0.0020` USD (With).
+* **Total Tokens Consumed**: 7,500 tokens (Without) vs. 150 tokens (With) [Simulated].
+* **Cloud Provider Cost**: `$0.1000` USD (Without) vs. `$0.0020` USD (With) [Simulated].
 * **Peak Gateway Memory**: Stable at `< 28MB`.
-* **Performance Gain**: **98.0% Cost Savings**; GPU concurrency lock reduced from 50 concurrent requests to 1.
+* **Performance Gain**: **98.0% Cost Savings** (in this simulated scenario); GPU concurrency lock reduced from 50 concurrent requests to 1.
 
 ---
 
@@ -44,9 +44,9 @@ With InferRoute (Streaming Deduplication):
 * **Workload**: Context size of 2,500 tokens. Comparison between routing queries randomly vs. routing queries with longest-common-prefix cache affinity using `router_trie.py`.
 
 #### Results:
-* **TTFT on Cold Node** (No Cache Affinity): **1,650ms** (due to GPU full pre-fill compute).
-* **TTFT on Warm Node** (Longest Prefix Trie Match): **180ms** (KV cache reused).
-* **Latency Delta**: **-1,470ms (89.1% Reduction)**.
+* **TTFT on Cold Node** (No Cache Affinity): **1,650ms** (due to simulated GPU pre-fill compute).
+* **TTFT on Warm Node** (Longest Prefix Trie Match): **180ms** (simulated KV cache reuse).
+* **Latency Delta**: **-1,470ms (89.1% Reduction in simulated environment)**.
 
 ---
 

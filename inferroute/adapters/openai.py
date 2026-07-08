@@ -2,6 +2,7 @@ import time
 import logging
 from typing import AsyncGenerator, Any
 from openai import AsyncOpenAI
+from opentelemetry import trace
 from inferroute.adapters.base import BaseAdapter
 from inferroute.config import settings
 from inferroute.observability import tracer, PROVIDER_COST_USD_TOTAL
@@ -16,8 +17,11 @@ MODEL_PRICING = {
 
 class OpenAIAdapter(BaseAdapter):
     def __init__(self):
-        # Allow testing/mocking with empty or mock api keys
-        self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+        self.mock_mode = settings.MOCK_OPENAI
+        if self.mock_mode:
+            self.client = None
+        else:
+            self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
 
     def _get_cost(self, model: str, prompt_tokens: int, completion_tokens: int, cached_prompt_tokens: int = 0) -> float:
         prices = MODEL_PRICING.get(model, MODEL_PRICING["gpt-4o-mini"])
@@ -29,6 +33,9 @@ class OpenAIAdapter(BaseAdapter):
         return cost
 
     async def generate(self, req: dict[str, Any]) -> dict[str, Any]:
+        if self.mock_mode:
+            return await self._mock_generate(req)
+            
         model = req.get("model", "gpt-4o-mini")
         if model not in MODEL_PRICING:
             # Fallback to mini pricing if custom model name
@@ -103,6 +110,11 @@ class OpenAIAdapter(BaseAdapter):
                 raise
 
     async def generate_stream(self, req: dict[str, Any]) -> AsyncGenerator[dict[str, Any], None]:
+        if self.mock_mode:
+            async for chunk in self._mock_generate_stream(req):
+                yield chunk
+            return
+            
         model = req.get("model", "gpt-4o-mini")
         if model not in MODEL_PRICING:
             model = "gpt-4o-mini"
@@ -204,3 +216,88 @@ class OpenAIAdapter(BaseAdapter):
             span.end()
             logger.error(f"OpenAI streaming error: {e}")
             raise
+
+    async def _mock_generate(self, req: dict[str, Any]) -> dict[str, Any]:
+        from inferroute.adapters.mock_generator import generate_mock_reply
+        import asyncio
+        model = req.get("model", "gpt-4o-mini")
+        prompt_len = sum(len(m.get("content", "")) for m in req.get("messages", []))
+        prompt_tokens = prompt_len // 4 + 5
+        completion_tokens = 60
+        
+        await asyncio.sleep(0.25)  # simulated 250ms cloud latency
+        messages = req.get("messages", [])
+        prompt = messages[-1].get("content", "") if messages else ""
+        content = generate_mock_reply(prompt, "openai")
+        cost = self._get_cost(model, prompt_tokens, completion_tokens, 0)
+        
+        return {
+            "id": f"openai-mock-{int(time.time())}",
+            "object": "chat.completion",
+            "created": int(time.time()),
+            "model": model,
+            "choices": [{
+                "index": 0,
+                "message": {"role": "assistant", "content": content},
+                "finish_reason": "stop",
+            }],
+            "usage": {
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "total_tokens": prompt_tokens + completion_tokens,
+                "cached_prompt_tokens": 0,
+                "estimated_cost_usd": cost,
+            },
+            "timing": {"ttft_ms": 250.0, "latency_ms": 250.0},
+        }
+
+    async def _mock_generate_stream(self, req: dict[str, Any]) -> AsyncGenerator[dict[str, Any], None]:
+        from inferroute.adapters.mock_generator import generate_mock_reply
+        import asyncio
+        model = req.get("model", "gpt-4o-mini")
+        prompt_len = sum(len(m.get("content", "")) for m in req.get("messages", []))
+        prompt_tokens = prompt_len // 4 + 5
+        
+        messages = req.get("messages", [])
+        prompt = messages[-1].get("content", "") if messages else ""
+        content = generate_mock_reply(prompt, "openai")
+        words = content.split(" ")
+        
+        start_time = time.time()
+        await asyncio.sleep(0.12)  # 120ms cloud TTFT
+        ttft_ms = (time.time() - start_time) * 1000.0
+        
+        chunk_id = f"openai-stream-mock-{int(time.time())}"
+        yield {
+            "id": chunk_id, "object": "chat.completion.chunk",
+            "created": int(time.time()), "model": model,
+            "choices": [{"index": 0, "delta": {"role": "assistant", "content": ""}, "finish_reason": None}]
+        }
+        
+        for i, word in enumerate(words):
+            await asyncio.sleep(0.015)  # 15ms delay per token
+            yield {
+                "id": chunk_id, "object": "chat.completion.chunk",
+                "created": int(time.time()), "model": model,
+                "choices": [{"index": 0, "delta": {"role": None, "content": word if i == 0 else " " + word}, "finish_reason": None}]
+            }
+            
+        yield {
+            "id": chunk_id, "object": "chat.completion.chunk",
+            "created": int(time.time()), "model": model,
+            "choices": [{"index": 0, "delta": {"role": None, "content": None}, "finish_reason": "stop"}]
+        }
+        
+        latency_ms = (time.time() - start_time) * 1000.0
+        completion_tokens = len(words) * 2
+        cost = self._get_cost(model, prompt_tokens, completion_tokens, 0)
+        
+        yield {
+            "id": chunk_id, "object": "chat.completion.chunk", "choices": [],
+            "usage": {
+                "prompt_tokens": prompt_tokens, "completion_tokens": completion_tokens,
+                "total_tokens": prompt_tokens + completion_tokens, "cached_prompt_tokens": 0,
+                "estimated_cost_usd": cost,
+            },
+            "timing": {"ttft_ms": ttft_ms, "latency_ms": latency_ms},
+        }

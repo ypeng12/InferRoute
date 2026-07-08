@@ -41,3 +41,7 @@ Thumbs.db
 
 # Locust results
 locust_report/
+
+# Databases
+*.db
+

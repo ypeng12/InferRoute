@@ -39,8 +39,25 @@ class CacheLayer:
     def _normalize_req(req: dict[str, Any]) -> dict[str, Any]:
         """Strip non-content keys that do not affect generation."""
         clean = req.copy()
-        for key in ("routing", "metadata", "stream", "tenant_id"):
-            clean.pop(key, None)
+        
+        # Pop routing, metadata, and stream
+        routing = clean.pop("routing", {}) or {}
+        metadata = clean.pop("metadata", {}) or {}
+        clean.pop("stream", None)
+        
+        # Check if shared_cache=True is explicitly set to share cache across tenants
+        shared_cache = False
+        if isinstance(routing, dict):
+            shared_cache = shared_cache or routing.get("shared_cache", False)
+        if isinstance(metadata, dict):
+            shared_cache = shared_cache or metadata.get("shared_cache", False)
+            
+        if not shared_cache:
+            # Retain tenant_id to isolate cached entries by default
+            pass
+        else:
+            clean.pop("tenant_id", None)
+            
         return clean
 
     @staticmethod
@@ -100,7 +117,7 @@ class CacheLayer:
     async def store_exact(
         self, req: dict[str, Any], resp: dict[str, Any], ttl_sec: int = EXACT_TTL_S
     ) -> None:
-        """Store response in exact cache and update prefix hint."""
+        """Store response in exact cache."""
         client = get_redis_client()
         if client is None:
             return
@@ -108,13 +125,6 @@ class CacheLayer:
             key = self._exact_key(req)
             await client.set(key, json.dumps(resp, ensure_ascii=False), ex=ttl_sec)
             logger.debug(f"[Cache] Stored exact key={key[:24]}… TTL={ttl_sec}s")
-
-            # Also store a prefix hint pointing to this exact key
-            prompt = self._prompt_text(req)
-            if len(prompt) >= 32:
-                prefix = prompt[: settings.CACHE_PREFIX_MAX_CHARS]
-                prefix_key = self._prefix_key(prefix)
-                await client.set(prefix_key, key, ex=PREFIX_TTL_S)
         except Exception as e:
             logger.error(f"[Cache] Store error: {e}")
 
@@ -125,39 +135,9 @@ class CacheLayer:
         Check if a cached response exists for a request that shares a common
         prompt prefix with the current request.
 
-        This is a hint-based approach: we check multiple prefix lengths
-        (100%, 75%, 50% of CACHE_PREFIX_MAX_CHARS) to find the longest match.
-        On a hit, the prefix entry points to the exact-cache key for retrieval.
+        DEPRECATED: Prefix cache is no longer used to directly return cached responses
+        to avoid incorrect answers. We now use router_trie.py for warm KV cache routing affinity.
         """
-        client = get_redis_client()
-        if client is None:
-            return None
-
-        prompt = self._prompt_text(req)
-        if len(prompt) < 32:
-            return None  # too short for meaningful prefix matching
-
-        max_chars = settings.CACHE_PREFIX_MAX_CHARS
-        # Try longest prefix first, then shorter prefixes
-        prefix_lengths = [max_chars, int(max_chars * 0.75), int(max_chars * 0.5)]
-
-        try:
-            for plen in prefix_lengths:
-                prefix = prompt[:plen]
-                if len(prefix) < 16:
-                    continue
-                prefix_key = self._prefix_key(prefix)
-                exact_key_ref = await client.get(prefix_key)
-                if exact_key_ref:
-                    raw = await client.get(exact_key_ref)
-                    if raw:
-                        logger.info(f"[Cache] Prefix HIT prefix_len={plen} chars")
-                        PREFIX_CACHE_HIT_TOTAL.inc()
-                        CACHE_HIT_TOTAL.labels(type="prefix").inc()
-                        return json.loads(raw)
-        except Exception as e:
-            logger.error(f"[Cache] Prefix lookup error: {e}")
-
         return None
 
     # ── Request deduplication ─────────────────────────────────────────────────

@@ -3,12 +3,15 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, Asyn
 from inferroute.config import settings
 from inferroute.models import Base
 
-# Create async engine
+# Create async engine with parameters appropriate for the database backend
+engine_args = {"echo": False}
+if "sqlite" not in settings.DATABASE_URL:
+    engine_args["pool_size"] = 10
+    engine_args["max_overflow"] = 20
+
 engine = create_async_engine(
     settings.DATABASE_URL,
-    echo=False,
-    pool_size=10,
-    max_overflow=20
+    **engine_args
 )
 
 # Async session factory

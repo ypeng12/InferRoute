@@ -3,6 +3,7 @@ import time
 import logging
 from typing import AsyncGenerator, Any
 import httpx
+from opentelemetry import trace
 from inferroute.adapters.base import BaseAdapter
 from inferroute.config import settings
 from inferroute.observability import tracer, PROVIDER_COST_USD_TOTAL

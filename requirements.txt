@@ -19,3 +19,5 @@ jsonschema>=4.22.0
 pytest>=8.2.2
 pytest-asyncio>=0.23.7
 locust>=2.28.0
+aiosqlite>=0.20.0
+

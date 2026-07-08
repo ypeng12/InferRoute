@@ -20,7 +20,7 @@ This document details how **InferRoute** handles infrastructure failures (Redis,
 When the Redis cache server goes offline:
 * **Connection Handling**: The connection is managed lazily by `redis.asyncio`. When commands like `GET`, `SET`, or `INCR` are run, they raise a connection error.
 * **Code Implementation**:
-  All Redis lookups in [cache.py](file:///c:/Users/pengy/OneDrive/Desktop/InferRoute/inferroute/cache.py) and rate limiters in [rate_limiter.py](file:///c:/Users/pengy/OneDrive/Desktop/InferRoute/inferroute/rate_limiter.py) are wrapped in `try...except Exception` blocks:
+  All Redis lookups in [cache.py](../inferroute/cache.py) and rate limiters in [rate_limiter.py](../inferroute/rate_limiter.py) are wrapped in `try...except Exception` blocks:
   ```python
   try:
       # Redis operations
@@ -35,7 +35,7 @@ When the Redis cache server goes offline:
 
 ### 2. PostgreSQL Down (Auth & Audit Resiliency)
 When the relational audit database is unreachable:
-* **Wallet Balance Lookup**: In [auth.py](file:///c:/Users/pengy/OneDrive/Desktop/InferRoute/inferroute/auth.py), the balance check query is wrapped in a fail-open block.
+* **Wallet Balance Lookup**: In [auth.py](../inferroute/auth.py), the balance check query is wrapped in a fail-open block.
   ```python
   try:
       async with async_session() as session:
@@ -44,7 +44,7 @@ When the relational audit database is unreachable:
       logger.error(f"Database error during wallet balance check: {e}. Bypassing wallet check.")
       return  # Fail-open: bypass credit restrictions during outages
   ```
-* **Background Logging**: In [main.py](file:///c:/Users/pengy/OneDrive/Desktop/InferRoute/inferroute/main.py), writing requests logs and deducting balances runs asynchronously in a FastAPI background task:
+* **Background Logging**: In [main.py](../inferroute/main.py), writing requests logs and deducting balances runs asynchronously in a FastAPI background task:
   ```python
   try:
       # Write RequestLog & deduct balance
@@ -60,7 +60,7 @@ When the relational audit database is unreachable:
 ### 3. Upstream LLM Timeout / Outage (Circuit Breakers)
 If a primary model provider (e.g. local Ollama) runs out of memory or begins returning HTTP 500 errors:
 * **Circuit Breaker State Machine**:
-  * Tracked in [circuit_breaker.py](file:///c:/Users/pengy/OneDrive/Desktop/InferRoute/inferroute/circuit_breaker.py).
+  * Tracked in [circuit_breaker.py](../inferroute/circuit_breaker.py).
   * If the failure count exceeds `CB_FAILURE_THRESHOLD` (default: 5), the circuit breaker transitions from `CLOSED` to `OPEN`.
   * All subsequent requests are blocked from hitting the failed primary node and are instantly rerouted to the secondary cloud backend (e.g. OpenAI).
 * **Self-Healing (Half-Open)**:
