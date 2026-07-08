@@ -1,0 +1,86 @@
+[
+  {
+    "id": "general_01",
+    "category": "general",
+    "prompt": "Explain the concept of quantum computing in simple terms for a 10-year old.",
+    "requires_json": false,
+    "reference_keywords": ["qubit", "superposition", "computer"]
+  },
+  {
+    "id": "general_02",
+    "category": "general",
+    "prompt": "List the three primary laws of thermodynamics.",
+    "requires_json": false,
+    "reference_keywords": ["energy", "entropy", "temperature"]
+  },
+  {
+    "id": "general_03",
+    "category": "general",
+    "prompt": "Explain the difference between weather and climate.",
+    "requires_json": false,
+    "reference_keywords": ["time", "atmosphere", "long-term"]
+  },
+  {
+    "id": "code_01",
+    "category": "code",
+    "prompt": "def is_prime(n):\n    # Write Python code to return True if n is prime and False otherwise.\n    # Return ONLY raw code without markdown wrappers.",
+    "requires_json": false,
+    "reference_keywords": ["def is_prime", "return", "for", "range"]
+  },
+  {
+    "id": "code_02",
+    "category": "code",
+    "prompt": "function reverseString(str) {\n    // Write JavaScript code to reverse a string.\n    // Return ONLY raw code without markdown wrappers.",
+    "requires_json": false,
+    "reference_keywords": ["function", "return", "split", "reverse"]
+  },
+  {
+    "id": "math_01",
+    "category": "math",
+    "prompt": "Solve for x: 5x - 15 = 20. Output ONLY the final numeric value of x as an integer.",
+    "requires_json": false,
+    "reference_keywords": ["7"]
+  },
+  {
+    "id": "math_02",
+    "category": "math",
+    "prompt": "A batch of 8 cookies requires 2 cups of sugar. How many cups of sugar are needed for 24 cookies? Output ONLY the final numeric value.",
+    "requires_json": false,
+    "reference_keywords": ["6"]
+  },
+  {
+    "id": "math_03",
+    "category": "math",
+    "prompt": "If a triangle has a base of 10cm and height of 5cm, what is its area in square centimeters? Output ONLY the final numeric value.",
+    "requires_json": false,
+    "reference_keywords": ["25"]
+  },
+  {
+    "id": "extraction_01",
+    "category": "extraction",
+    "prompt": "Extract structured details from: 'John Doe is a 35-year-old doctor from Chicago.' Output raw JSON conforming to this schema: {\"name\": \"string\", \"age\": \"number\", \"city\": \"string\"}. Do not use markdown wrappers.",
+    "requires_json": true,
+    "expected_keys": ["name", "age", "city"]
+  },
+  {
+    "id": "extraction_02",
+    "category": "extraction",
+    "prompt": "Extract the ID and total from: 'Order ID: ORD-998822. Billing total: $124.99 USD.' Output raw JSON conforming to schema: {\"id\": \"string\", \"total\": \"number\"}. Do not use markdown wrappers.",
+    "requires_json": true,
+    "expected_keys": ["id", "total"]
+  },
+  {
+    "id": "long_context_01",
+    "category": "long_context",
+    "prompt": "Context: InferRoute is a distributed LLM gateway that uses a Radix Trie to check for prompt prefixes. Prompt prefixes of length 128, 256, and 512 are hashed using SHA-256 and stored in Redis sets mapping to warm backend hosts. When a prompt matches a warm prefix in Redis, the scoring algorithm applies a cache bonus to favor routing to that host. This avoids pre-fill computing overhead on local GPU nodes.\nQuestion: What hashing algorithm and database are used by InferRoute to track prompt prefixes for routing cache-affinity?",
+    "requires_json": false,
+    "reference_keywords": ["SHA-256", "Redis", "Radix Trie"]
+  },
+  {
+    "id": "long_context_02",
+    "category": "long_context",
+    "prompt": "Context: Large language models use key-value caching (KV caching) to avoid computing representations of prompt tokens repeatedly. The prompt pre-fill phase accounts for a significant portion of TTFT, especially for documents containing up to 10,000 tokens. The TCP Vegas congestion control rate limiter monitors round-trip delays to adjust the concurrency window dynamically.\nQuestion: Which phase of LLM inference is optimized by KV caching to reduce 首字延迟 (TTFT)?",
+    "requires_json": false,
+    "reference_keywords": ["pre-fill", "prefill", "TTFT", "KV cache"]
+  }
+]

@@ -285,6 +285,28 @@ class Router:
             ROUTING_DECISION_TOTAL.labels(policy="hard_pin", backend=pinned_backend).inc()
             return RoutingDecision(pinned_backend, pinned_fallback, pinned_reason, True, "hard_pin")
 
+        # ── Learned Router Policy ─────────────────────────────────────────────
+        if policy == "learned":
+            from inferroute.learned_router import learned_router
+            prompt_text = " ".join(m.get("content", "") for m in req.get("messages", []))
+            recommended = learned_router.predict_backend(prompt_text)
+            
+            cb = circuit_breaker.get_circuit_breaker(recommended)
+            cb_allowed = await cb.allow_request()
+            
+            final_backend = recommended
+            reason = f"Learned Router recommendation: {recommended}"
+            
+            if not cb_allowed:
+                fallback_backend = "openai" if recommended == "vllm" else "vllm"
+                logger.warning(f"[Router] Learned backend '{recommended}' is OPEN. Falling back to '{fallback_backend}'.")
+                final_backend = fallback_backend
+                reason = f"Learned Router fallback: {fallback_backend} (original {recommended} was open)"
+            
+            fallback_option = "gemini" if final_backend == "openai" else "openai"
+            ROUTING_DECISION_TOTAL.labels(policy="learned", backend=final_backend).inc()
+            return RoutingDecision(final_backend, fallback_option, reason, True, "learned")
+
         # ── Candidate filtering ───────────────────────────────────────────────
         allow_local = routing_opts.get("allow_local", True)
         allow_cloud = routing_opts.get("allow_cloud", True)

@@ -33,9 +33,36 @@ class OutputValidator:
     def validate_response(self, req: dict[str, Any], resp: dict[str, Any]) -> ValidationResult:
         """
         Validates an LLM response based on the gateway request specifications.
-        Currently checks JSON schemas.
+        Checks JSON schemas and code compilation syntax.
         """
-        # If no JSON schema is requested, we pass by default
+        choices = resp.get("choices", [])
+        if not choices:
+            reason = "No choices returned in response to validate."
+            VALIDATION_FAIL_TOTAL.labels(reason="empty_choices").inc()
+            return ValidationResult(ok=False, reason=reason)
+            
+        content = choices[0].get("message", {}).get("content", "")
+        if not content:
+            reason = "Empty content in message choices."
+            VALIDATION_FAIL_TOTAL.labels(reason="empty_content").inc()
+            return ValidationResult(ok=False, reason=reason)
+
+        # 1. Syntactic check for Code tasks
+        if req.get("category") == "code" or "def " in content or "import " in content:
+            import ast
+            try:
+                py_code = content
+                if "```python" in py_code:
+                    py_code = py_code.split("```python", 1)[1].split("```", 1)[0]
+                elif "```" in py_code:
+                    py_code = py_code.split("```", 1)[1].split("```", 1)[0]
+                ast.parse(py_code.strip())
+            except Exception as e:
+                reason = f"Python syntax error: {e}"
+                VALIDATION_FAIL_TOTAL.labels(reason="syntax_error").inc()
+                return ValidationResult(ok=False, reason=reason)
+
+        # 2. Check JSON schemas
         response_format = req.get("response_format")
         if not response_format:
             return ValidationResult(ok=True)
@@ -48,20 +75,8 @@ class OutputValidator:
         if not schema_dict:
             return ValidationResult(ok=True)
             
-        # Extract response text to validate
-        choices = resp.get("choices", [])
-        if not choices:
-            reason = "No choices returned in response to validate."
-            VALIDATION_FAIL_TOTAL.labels(reason="empty_choices").inc()
-            return ValidationResult(ok=False, reason=reason)
-            
-        content = choices[0].get("message", {}).get("content", "")
-        if not content:
-            reason = "Empty content in message choices."
-            VALIDATION_FAIL_TOTAL.labels(reason="empty_content").inc()
-            return ValidationResult(ok=False, reason=reason)
-            
         return self.validate_schema(content, schema_dict)
+        
         
     def validate_stream_chunk(self, req: dict[str, Any], accumulated_content: str) -> ValidationResult:
         """
