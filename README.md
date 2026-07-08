@@ -39,9 +39,28 @@ InferRoute is designed for high-throughput, low routing overhead, and self-heali
 * **The Problem**: Cheap local models are fast and free, but prone to formatting failures, infinite loops, or repetitive garbage outputs.
 * **Our Solution**: Integrates a stream-buffering validator. It inspects the first few tokens of cheap local model outputs. If a repetitive pattern is detected, it triggers **instant speculative cancellation** and transparently cascades the request to high-quality cloud models (e.g., GPT-4o) in the middle of the request lifecycle, minimizing service disruption.
 
-### 5. 💳 Multi-Tenant Billing & Simulated Wallet
+### 5. 🧠 Learning-Based LLM Router & Reproducible Benchmark
+* **The Problem**: Statically routing requests or using manual heuristic scoring is hard to tune, and it's difficult to verify the performance/cost benefit of routing without a reproducible evaluation framework.
+* **Our Solution**: Developed a **predictive router classifier** (`inferroute/learned_router.py`) that extracts prompt features (categorizing math, code, JSON extraction, context size) to dynamically route queries. Added a **reproducible evaluation harness** in the `benchmarks/` directory containing workloads, programmatic quality evaluation, and automatic Pareto Cost-Quality frontier plotting tools.
+
+### 6. 💳 Multi-Tenant Billing & Simulated Wallet
 * Built-in multi-tenant isolation with token-cost calculation.
 * Enforces **`402 Payment Required`** block instantly if a tenant's wallet credit drains to `$0.00`, with a resilient **Fail-Open** mechanism to guarantee uptime if the database is unreachable.
+
+---
+
+## 📊 Reproducible Evaluation Harness
+
+InferRoute includes a standardized pipeline to test and compare multiple routing strategies under realistic workloads:
+
+```bash
+# 1. Run the evaluation orchestrator against local simulation adapters
+python benchmarks/run_router_eval.py
+
+# 2. Compile stats and generate visual Pareto curves
+python benchmarks/plot_results.py
+```
+This runs the dataset prompts across 8 scenarios (Always OpenAI, Always Gemini, Heuristic Router, Learned Router, Cascade Router, etc.) and outputs latency, TTFT, cost, quality score, and SLO compliance results to `benchmarks/results/`.
 
 ---
 
