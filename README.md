@@ -7,47 +7,168 @@
   <img src="https://img.shields.io/badge/PRs-Welcome-goldenrod.svg" alt="PRs Welcome">
 </p>
 
-> 🌐 **Interactive Academic Hub & Cascade Simulator**: **[https://ypeng12.github.io/InferRoute/](https://ypeng12.github.io/InferRoute/)**  
-> Go here to explore detailed mathematical derivations, request lifecycle sequence charts, paper downloads, and run the sequential cascade simulation.
+> 🚀 **Live Technical Hub & Interactive Cascade Simulator**: **[https://ypeng12.github.io/InferRoute/](https://ypeng12.github.io/InferRoute/)**  
+> Visit the hosted page to interact with the live sequence charts, LaTeX formula guides, original paper previews, and the FrugalGPT sequential cascade simulator!
 
 ---
 
-## 📖 Overview
+## 📖 Introduction
 
-**InferRoute** is a lightweight, production-grade LLM inference gateway and reliability proxy. Sitting between your client applications/AI agents and model backends (local Ollama/vLLM instances and cloud APIs like OpenAI/Gemini), it dynamically routes queries to optimize for **cost, latency, and quality** in real-time.
+**InferRoute** is a lightweight, high-performance LLM inference gateway and reliability proxy. Sitting between client applications/AI agents and model backends (local Ollama/vLLM engines and commercial APIs like OpenAI/Gemini), it dynamically routes queries to optimize for **cost, latency, and quality** in real-time.
 
-By incorporating optimization techniques from Stanford's **FrugalGPT** and Martian's **RouterBench**, InferRoute helps developers reduce API operational costs by over **60%** while respecting latency and formatting SLAs.
+Rather than statically pinning your application to a single expensive cloud endpoint, InferRoute dynamically routes prompts based on **real-time quality validation, cost constraints, latency tracking, and prefix KV-cache affinity**, demonstrating **over 60% in API cost savings** in benchmark sweeps while guaranteeing strict latency and formatting SLAs.
 
----
-
-## ⚡ Key Features
-
-* **🔄 Streaming Request Coalescing**: Uses a Redis-backed lock to merge concurrent duplicate prompts. Only the first request calls the upstream LLM, broadcasting stream token chunks to all callers via Redis Pub/Sub, preventing cache stampedes.
-* **🌳 Radix Trie prefix KV-Cache Affinity**: Hashes and stores prompt system instruction prefixes in a Prefix Tree. Directs requests to local GPU backends holding warm KV caches, reducing TTFT (Time-to-First-Token) by up to 80%.
-* **🛡️ Vegas Adaptive Concurrency Control**: Tracks active RTT queues dynamically using a TCP Vegas congestion control loop to protect local GPUs from OOM failures under sudden traffic spikes.
-* **🔀 Speculative Fallback Cascades**: Buffers stream output from cheap local endpoints, running real-time loop and validation checks. Automatically and transparently escalates requests to premium cloud endpoints mid-stream if quality checks fail.
-* **🧠 Learned Predictive Routers**: Supports content-aware KNN and MLP scoring models, optimizing the cost-quality trade-off dynamically.
-* **💳 Multi-Tenant Billing Gateway**: Validates tenant keys and credit balances against an asynchronous PostgreSQL audit ledger, enforcing a resilient fail-open policy.
+<p align="center">
+  <img src="docs/cost_quality_frontier.png" alt="Cost Quality Pareto Frontier Sweep" width="650" style="border-radius: 12px; border: 1px solid rgba(0,0,0,0.08); box-shadow: 0 10px 30px rgba(0,0,0,0.05);" />
+</p>
 
 ---
 
-## 🚀 Quick Start (Simulation Mode)
+## ⚡ Key Technical Highlights
 
-You can run InferRoute completely offline with zero API keys using our built-in mock simulation mode:
+* **🔄 Distributed Streaming Deduplication**: Implements a Redis lock for duplicate concurrent prompts. The first request invokes the LLM while subsequent callers subscribe to the stream via **Redis Pub/Sub**, broadcasting token chunks simultaneously to avoid duplicate API fees.
+* **🌳 Radix Trie prefix KV-Cache Affinity**: Hashes prompt prefixes in a Prefix Tree to route requests to local GPU nodes holding warm KV caches, reducing Time-to-First-Token (TTFT) by up to 80%.
+* **🛡️ Vegas Adaptive Concurrency Control**: Scales gateway concurrency slots dynamically based on active queue size tracking via a TCP Vegas congestion control loop to protect local GPUs from OOM failures.
+* **🔀 Speculative Fallback Cascades**: Buffers response stream tokens, cancels degraded local streams speculatively (on loop or gibberish detection), and escalates to premium cloud nodes mid-stream to avoid service disruptions.
+* **💳 Multi-Tenant Billing Gateway**: Validates tenant credentials and credits against an asynchronous PostgreSQL audit ledger, enforcing a resilient fail-open policy if the database is unreachable.
 
-### 1. Installation
+---
+
+## 🏗️ Gateway Request Lifecycle
+
+The diagram below outlines how the gateway intercepts client requests, checks caches, scales concurrency, and handles fallback cascades:
+
+```mermaid
+graph TD
+    Client[Client App / SDK] -->|POST /v1/chat/completions| Gateway[InferRoute Gateway]
+    
+    Gateway --> Auth{Auth Gate & Balance Check}
+    Auth -->|Low Balance| Block[402 Payment Required]
+    Auth -->|Valid Wallet| Cache{Redis Exact & Trie Cache}
+    
+    Cache -->|Cache Hit| StreamCache[Stream response from Redis] --> Client
+    Cache -->|Cache Miss| Limiter{Vegas Adaptive Limiter}
+    
+    Limiter -->|Queue Overload| Failover[Fallback to Cloud Node]
+    Limiter -->|Slot Acquired| Router[Routing Engine]
+    
+    Router -->|Prefill Cache Affinity| Primary[Local vLLM / Ollama]
+    Router -->|Speculative Cost-Saver| Primary
+    
+    Primary --> StreamBuf[Stream Buffer Validation]
+    StreamBuf -->|Repeated Loops / Fail| Cascade[Speculative Cancel & Fallback to Cloud]
+    StreamBuf -->|Quality Passed| StreamClient[Stream Response to Client] --> Client
+    
+    StreamBuf --> BackgroundLog[Async Log & Wallet Deduction] --> PostgreSQL[(PostgreSQL Audit & Ledger)]
+```
+
+---
+
+## 🧠 RouterBench Integration & Theoretical Foundations
+
+> [!TIP]
+> For a detailed breakdown of routing algorithms, mathematical proofs, and model mapping logic, see our dedicated **[Academic Foundations Guide](docs/academic_foundations.md)**.
+
+InferRoute integrates the core routing methodologies and trade-off evaluation principles from the research paper:
+> **ROUTERBENCH: A Benchmark for Multi-LLM Routing System** (by Martian / [withmartian/routerbench](https://github.com/withmartian/routerbench)).  
+> 📄 **[Read RouterBench Paper PDF](docs/article/A_Benchmark_for_Multi_LLM_Routing_System.pdf)**
+
+### 1. Mathematical Scoring & Optimization
+Predictive routing is formulated as choosing a backend $m$ that maximizes the utility score for a prompt $x$:
+$$\text{Score}(m) = \lambda \cdot \text{Quality}_{\text{pred}}(m) - \text{Cost}(m)$$
+
+Where:
+* **$\lambda$ (lambda)**: User's willingness to pay. A high $\lambda$ (e.g. 5.0) prioritizes output quality (routing to GPT-4o-mini or Gemini-Flash). A low $\lambda$ (e.g. 0.1) prioritizes cost savings (routing to local vLLM/Ollama).
+* **$\text{Quality}_{\text{pred}}(m)$**: Predicted quality score of model $m$ on prompt $x$ (ranging from $0.0$ to $1.0$).
+* **$\text{Cost}(m)$**: The estimated economic API fee to process the request on backend $m$.
+
+### 2. Supported Routing Policies
+InferRoute supports six distinct routing strategies aligned with the paper's framework:
+1. **🎲 Zero Router Baseline (`zero`)**: Non-content-aware routing. Randomly routes requests to Cloud/Expensive vs. Local/Cheap backends based on a target cloud mixture ratio $p$. Sweeping $p \in [0, 1]$ constructs the baseline cost-quality curve.
+2. **📋 Rule-Based Router (`rule`)**: Content-aware heuristics. Evaluates prompt keywords to route tasks (e.g., routing math tasks to GPT/Gemini, coding tasks to vLLM, simple greetings to Ollama).
+3. **🧠 KNN-Based Router (`knn`)**: Retrieves the $K$ most textually similar prompts (using Jaccard similarity) from historical benchmark outcomes. Computes the average historical quality per backend and optimizes via $\lambda \cdot \text{Quality} - \text{Cost}$.
+4. **🕸️ MLP-Based Router (`mlp`)**: A fast logistic regression classifier that extracts prompt features (`is_code`, `is_math`, `is_json`, `is_long`) to predict success probability as predicted quality, then optimizes using the cost-quality formula.
+5. **🔮 Oracle Router Offline Upper Bound (`oracle`)**: A theoretical upper bound that has advance knowledge of whether each model will answer correctly. It selects the cheapest model that achieves a quality score $\ge 0.8$.
+6. **🔄 Cascade Router (FrugalGPT) (`cascade`)**: Server-side model cascade. Executes the cascade chain (cheap local models up to premium cloud models) until the reliability judge score meets the acceptance threshold $\tau$.
+
+### 3. Metric: AIQ (Area Under the Curve)
+To measure a router's overall efficiency across all budgets, we compute the **AIQ (Area under the cost-quality curve)** using the Trapezoidal Rule over swept parameter values ($\lambda$ or $p$):
+$$\text{AIQ} = \int_{c_{\min}}^{c_{\max}} Q(c) \, dc \approx \sum_{i=0}^{n-1} \frac{q_i + q_{i+1}}{2} \cdot (c_{i+1} - c_i)$$
+
+A smart, content-aware learned router (MLP/KNN) will push the Pareto frontier towards the top-left, achieving a **significantly higher AIQ** than the Zero Router baseline.
+
+---
+
+## 🔄 FrugalGPT Cascading Inference (LLM Cascade)
+
+InferRoute integrates the cost-performance optimization concepts from the paper:
+> **FrugalGPT: How to Use Large Language Models While Reducing Cost and Improving Performance** (by Stanford University / arXiv:2305.05196).  
+> 📄 **[Read FrugalGPT Paper PDF](docs/article/How_to_Use_Large_Language_Models.pdf)** | 📄 **[Read Hybrid LLM Routing Paper PDF](docs/article/cost_efficiency.pdf)**
+
+FrugalGPT identifies three main classes of cost-saving methods:
+1. **Prompt Adaptation**: Reduces input tokens dynamically. In InferRoute, when routing to cheap local backends (Ollama/vLLM), the **Prompt Adapter** (`prompt_adapter.py`) automatically compresses prompt sizes by pruning few-shot examples, restoring full prompts when upgrading to premium models.
+2. **LLM Approximation (Completion Cache)**: Caches full answers. Handled by InferRoute's exact completions caching layer in Redis.
+3. **LLM Cascade**: Sequential invocation of backends (e.g., `ollama` ➔ `vllm` ➔ `gemini` ➔ `openai`). The request starts with the cheapest backend, passes through a **Reliability Judge** (syntactic check, schema validation, loop penalty), and only escalates to a more expensive tier if the quality score is below the acceptance threshold $\tau$.
+
+### 1. Cascade Configuration
+Select `Cascade Router (FrugalGPT Style)` in the routing options, and adjust the acceptance threshold $\tau \in [0.0, 1.0]$. The gateway executes the cascade loop entirely server-side, accumulating tokens and fees across all tried models to log in the PostgreSQL database correctly.
+
+### 2. Streaming Cascade Buffer
+To prevent leaking low-quality responses to clients during streaming requests, the gateway buffers stream chunks internally, executes quality grading, and only pumps the SSE stream to the client once the output is officially accepted.
+
+---
+
+## 📊 Reproducible Evaluation Harness
+
+InferRoute includes a standardized pipeline to test and compare multiple routing strategies under realistic workloads, sweeping ratios and lambdas to trace Pareto frontiers:
+
 ```bash
+# 1. Run the evaluation orchestrator (sweeps Zero Router p-ratios and KNN/MLP lambda values)
+python benchmarks/run_router_eval.py
+
+# 2. Compile stats, compute AIQ values, and generate visual Pareto curves
+python benchmarks/plot_results.py
+```
+This runs the dataset prompts across all scenarios and sweeps, and outputs cost, quality, latencies, SLO compliance, and AIQ comparisons to `benchmarks/results/`.
+
+---
+
+## 🎨 Interactive Playground & Chaos Simulator
+
+InferRoute includes a built-in interactive control center panel served at the root (`/`) path:
+* **Live Cost Dashboard**: Displays money saved ($ USD), tokens saved, TTFT latency, and Redis cache hit rate.
+* **Request Pipeline Visualizer**: Renders a vertical stepper showing step-by-step processing of the query (Cache checking, Limiter checking, Node executing, and Cascades).
+* **Simulated Wallet & Recharge**: Top-right wallet indicator showing current credits (e.g., `$5.00` trial credit) with a simulated `+ $10` recharge button.
+* **Chaos Engineering & Failure Injection**: A panel to manually kill or throttle model nodes, observing the circuit-breaker turning Red and routing self-healing in real-time.
+
+For detailed performance, concurrency, and cost reports under heavy loads, check out the **[Benchmark Report](docs/benchmark.md)**.
+
+---
+
+## 🚀 Quick Start (Running Offline in 10 Seconds)
+
+InferRoute features a built-in **Simulation Mode** (using SQLite and Mock adapters) allowing you to boot and explore the gateway **completely for free, offline, with zero real API keys**!
+
+### 1. Requirements
+* Python 3.12 or 3.13
+* Docker & Docker Compose (Optional, for production Postgres/Redis/Grafana observability)
+
+### 2. Installation
+```bash
+# Clone the repository
 git clone https://github.com/ypeng12/InferRoute.git
 cd InferRoute
 
-# Set up virtual environment
+# Initialize virtual environment
 python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Install dependencies
 pip install -r requirements.txt
 ```
 
-### 2. Configure Environment
-Create a `.env` file in the root:
+### 3. Create Local Config File
+Create a `.env` file in the root directory:
 ```env
 DATABASE_URL=sqlite+aiosqlite:///inferroute.db
 MOCK_OPENAI=true
@@ -56,29 +177,31 @@ MOCK_VLLM=true
 MOCK_OLLAMA=true
 ```
 
-### 3. Start Gateway
+### 4. Start the Gateway
 ```bash
 python -m uvicorn inferroute.main:app --host 127.0.0.1 --port 8080 --reload
 ```
-Open **[http://127.0.0.1:8080](http://127.0.0.1:8080)** to interact with the Live Playground and Chaos panel.
+Open **[http://127.0.0.1:8080](http://127.0.0.1:8080)** in your browser to interact with the dashboard immediately!
 
 ---
 
-## 🛠️ Integration Example (OpenAI Client)
+## 🛠️ Unified Integration (OpenAI Drop-In)
 
-InferRoute exposes a fully OpenAI-compatible chat completions interface. Switch your existing application client in one line:
+InferRoute is compatible with the standard OpenAI API chat completions format. You can switch your existing codebases to run through InferRoute in just one line:
 
 ```python
 import openai
 
 client = openai.OpenAI(
     base_url="http://localhost:8080/v1",
-    api_key="sk-inferroute-demo"  # Tenant API key
+    api_key="sk-inferroute-demo"  # Custom tenant auth key
 )
 
 response = client.chat.completions.create(
-    model="edge/auto",  # Dynamic auto-routing policy
-    messages=[{"role": "user", "content": "Write a quicksort in Python."}],
+    model="edge/auto",  # Dynamic auto-routing
+    messages=[
+        {"role": "user", "content": "Write a quicksort in Python."}
+    ],
     stream=True
 )
 
@@ -90,24 +213,25 @@ for chunk in response:
 
 ---
 
-## 📚 Technical Documentation
+## 📚 Project Documentation
 
-For deeper engineering writeups, check our documentation guides:
-* **[Academic Foundations & Theory](docs/academic_foundations.md)**: Stanford FrugalGPT and RouterBench cost-quality derivations.
-* **[Performance & Cost Benchmarks](docs/benchmark.md)**: Pareto Sweeps, latency comparisons, and metrics.
-* **[Gateway Request Lifecycle](docs/architecture.md)**: Interceptors, concurrency queues, and fallback sequence diagrams.
-* **[Resilience & Failure Injection](docs/failure-injection.md)**: Self-healing circuit breakers and Vegas metrics.
+Explore the following detailed guides for in-depth engineering breakdowns:
+* **[Academic Research & Mathematical Foundations](docs/academic_foundations.md)**: Details of how FrugalGPT and RouterBench optimization theories map to our gateway components.
+* **[Performance & Cost Benchmarks](docs/benchmark.md)**: Concrete metrics, cache stampede statistics, and reproduction logs.
+* **[Inference Gateway Architecture](docs/architecture.md)**: Sequence diagrams of the request lifecycle and core sub-components.
+* **[Failure Injection & High Availability](docs/failure-injection.md)**: Details on fail-open mechanisms and circuit breaker status thresholds.
 
 ---
 
-## 📊 Containerized Production Stack
+## 📊 Observability Stack (Production Environment)
 
-In production, run the Docker Compose stack to enable the full observability pipeline:
+In a production environment, spin up the containerized observability stack to monitor traffic, metrics, and traces:
 ```bash
+# Boot Postgres, Redis, OTtel Collector, Jaeger, Prometheus, Grafana
 docker compose up -d
 ```
-* **Grafana Dashboard (Performance & Latency)**: [http://localhost:3000](http://localhost:3000) (Admin/Admin)
-* **Jaeger UI (Microservice Trace Tracking)**: [http://localhost:16686](http://localhost:16686)
+* **Grafana Dashboard (Performance Metrics)**: [http://localhost:3000](http://localhost:3000) (Admin/Admin)
+* **Jaeger UI (Microservices Traces)**: [http://localhost:16686](http://localhost:16686)
 
 ---
 
