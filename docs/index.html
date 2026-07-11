@@ -684,14 +684,13 @@
                     </div>
                 </div>
 
-                <!-- Plain English Analogy / ELI5 for FrugalGPT -->
+                <!-- Academic Breakdown: FrugalGPT Cascading Core Logic -->
                 <div class="sub-card" style="margin-top: 1.5rem; background: rgba(109, 40, 217, 0.02); border-color: rgba(109, 40, 217, 0.15); display: flex; gap: 1rem; align-items: flex-start;">
-                    <span style="font-size: 1.5rem;">💡</span>
+                    <span style="font-size: 1.5rem;">📄</span>
                     <div>
-                        <h4 style="font-family: var(--font-outfit); font-weight: 700; color: var(--accent-violet); margin-bottom: 0.25rem;">Plain English Analogy: How FrugalGPT works</h4>
-                        <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5;">
-                            Imagine you want to fry a simple egg. Instead of hiring a Michelin-star chef (an expensive cloud model like GPT-4o), you try a fast-food joint first (a free local model like Ollama). 
-                            If the fast food doesn't taste right (fails format or quality checks), you throw it away and immediately escalate to the fine-dining chef. This sequential escalation saves you massive API costs because most queries are simple "eggs" that local models can handle perfectly!
+                        <h4 style="font-family: var(--font-outfit); font-weight: 700; color: var(--accent-violet); margin-bottom: 0.25rem;">Theoretical Framework: Model Cascading & Optimization</h4>
+                        <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.6;">
+                            The FrugalGPT framework models cost-performance optimization as a decision sequence under cost bounds. By arranging models in ascending order of cost and capabilities (e.g., \(M_1, M_2, \dots, M_k\)), the system routes the query sequentially. For each model \(M_j\), the response is validated by a specialized quality assessor (Reliability Judge). If the response quality satisfies the threshold (\(Q(M_j, x) \ge \tau\)), the generation stops, avoiding subsequent cloud execution fees. Otherwise, the request escalates to the next model tier, guaranteeing response quality while keeping average costs minimal.
                         </p>
                     </div>
                 </div>
@@ -802,15 +801,13 @@
                 </div>
             </div>
 
-            <!-- Plain English Analogy / ELI5 for RouterBench -->
+            <!-- Academic Breakdown: RouterBench Optimization Framework -->
             <div class="sub-card" style="margin-top: 1.5rem; background: rgba(109, 40, 217, 0.02); border-color: rgba(109, 40, 217, 0.15); display: flex; gap: 1rem; align-items: flex-start; margin-bottom: 2rem;">
-                <span style="font-size: 1.5rem;">💡</span>
+                <span style="font-size: 1.5rem;">📄</span>
                 <div>
-                    <h4 style="font-family: var(--font-outfit); font-weight: 700; color: var(--accent-violet); margin-bottom: 0.25rem;">Plain English Analogy: Utility Score & AIQ</h4>
-                    <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5;">
-                        Choosing an AI model is like shopping. You want the highest quality item, but at the lowest price. 
-                        The **Utility Score** calculates this: <code>Score = Quality - Cost</code>. If you are rich (high \(\lambda\)), you care more about premium quality; if you're on a budget (low \(\lambda\)), price becomes your primary decision factor. 
-                        **AIQ (Area Under the Curve)** is simply your "shopping efficiency score" across all possible budgets—a smart router pushes this score as high as possible compared to random buying.
+                    <h4 style="font-family: var(--font-outfit); font-weight: 700; color: var(--accent-violet); margin-bottom: 0.25rem;">Theoretical Framework: Cost-Quality Optimization Frontier</h4>
+                    <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.6;">
+                        The RouterBench framework models LLM selection as a multi-objective optimization problem. By defining the parameter \(\lambda\) (cost-quality trade-off coefficient), the scoring equation evaluates the economic utility of selecting a model \(m\) for a prompt \(x\). The parameter \(\lambda\) represents a user's willingness-to-pay: setting a higher \(\lambda\) prioritizes response quality, while a lower \(\lambda\) emphasizes cost savings. The Area under the cost-quality curve (AIQ) measures the cumulative routing performance across all budget constraints, serving as a unified metric for evaluating routing efficiency.
                     </p>
                 </div>
             </div>
