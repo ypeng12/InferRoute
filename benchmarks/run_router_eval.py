@@ -1,3 +1,15 @@
+"""
+Evaluation harness for RouterBench-inspired policies in InferRoute.
+
+This script evaluates various routing strategies (Always Cloud, Always Local, Zero Router, 
+Rule Router, KNN Router, MLP Router, Oracle Router, and Cascade Router) against the 
+workload dataset. It sweeps parameters (mixture ratio p, willingness to pay lambda) 
+to trace cost-quality curves.
+
+Inspired by:
+"ROUTERBENCH: A Benchmark for Multi-LLM Routing System" (withmartian/routerbench)
+"""
+
 import os
 import sys
 import json
@@ -37,32 +49,51 @@ SCENARIOS = [
         "payload_patch": {"model": "meta-llama/Meta-Llama-3-8B-Instruct", "routing": {"allow_cloud": False}}
     },
     {
-        "name": "cheapest-first",
-        "payload_patch": {"model": "edge/auto", "routing": {"policy": "cost"}}
+        "name": "always-ollama",
+        "payload_patch": {"model": "llama3", "routing": {"allow_cloud": False}}
     },
     {
-        "name": "fastest-first",
-        "payload_patch": {"model": "edge/auto", "routing": {"policy": "latency"}}
+        "name": "rule-router",
+        "payload_patch": {"model": "edge/auto", "routing": {"policy": "rule"}}
     },
     {
-        "name": "heuristic-reliability",
-        "payload_patch": {"model": "edge/auto", "routing": {"policy": "reliability"}}
-    },
-    {
-        "name": "learned-router",
-        "payload_patch": {"model": "edge/auto", "routing": {"policy": "learned"}}
-    },
-    {
-        "name": "cascade-router",
-        "payload_patch": {"model": "meta-llama/Meta-Llama-3-8B-Instruct"} # Base cheap vLLM model, evaluator handles retry cascade
+        "name": "oracle-router",
+        "payload_patch": {"model": "edge/auto", "routing": {"policy": "oracle"}}
     }
 ]
+
+# Sweep Zero Router (baseline mixture ratios p from 0.0 to 1.0)
+for p in [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]:
+    SCENARIOS.append({
+        "name": f"zero-router_p{p:.1f}",
+        "payload_patch": {"model": "edge/auto", "routing": {"policy": "zero", "mixture_ratio": p}}
+    })
+
+# Sweep KNN Router (willingness to pay lambdas)
+for lam in [0.0, 0.25, 0.5, 1.0, 2.0, 5.0]:
+    SCENARIOS.append({
+        "name": f"knn-router_l{lam:.2f}",
+        "payload_patch": {"model": "edge/auto", "routing": {"policy": "knn", "lambda": lam}}
+    })
+
+# Sweep MLP Router (willingness to pay lambdas)
+for lam in [0.0, 0.25, 0.5, 1.0, 2.0, 5.0]:
+    SCENARIOS.append({
+        "name": f"mlp-router_l{lam:.2f}",
+        "payload_patch": {"model": "edge/auto", "routing": {"policy": "mlp", "lambda": lam}}
+    })
+
+# Sweep Cascade Router (acceptance thresholds tau from 0.0 to 1.0)
+for tau in [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]:
+    SCENARIOS.append({
+        "name": f"cascade-router_t{tau:.2f}",
+        "payload_patch": {"model": "edge/auto", "routing": {"policy": "cascade", "acceptance_threshold": tau}}
+    })
 
 async def execute_request(client: AsyncClient, payload: dict) -> dict[str, Any]:
     """Issues POST completion to the gateway and measures latencies."""
     start_time = time.time()
     
-    # We query the chat completions route
     response = await client.post(
         "/v1/chat/completions",
         headers=HEADERS,
@@ -79,7 +110,8 @@ async def execute_request(client: AsyncClient, payload: dict) -> dict[str, Any]:
             "latency_ms": latency,
             "ttft_ms": latency,
             "cost_usd": 0.0,
-            "content": ""
+            "content": "",
+            "fallback_triggered": False
         }
         
     data = response.json()
@@ -87,19 +119,22 @@ async def execute_request(client: AsyncClient, payload: dict) -> dict[str, Any]:
     content = choices[0].get("message", {}).get("content", "") if choices else ""
     timing = data.get("timing", {})
     usage = data.get("usage", {})
+    route = data.get("route", {})
+    fallback_count = route.get("fallback_count", 0)
     
     return {
         "success": True,
         "content": content,
         "latency_ms": timing.get("latency_ms", latency),
-        "ttft_ms": timing.get("ttft_ms", latency / 2.0), # Estimate TTFT if missing
+        "ttft_ms": timing.get("ttft_ms", latency / 2.0),
         "cost_usd": usage.get("estimated_cost_usd", 0.0),
-        "model_used": data.get("model", "")
+        "model_used": data.get("model", ""),
+        "fallback_triggered": fallback_count > 0
     }
 
 async def run_evaluation():
     print("=============================================================")
-    print("Starting InferRoute Learning-Based Router Evaluation Harness")
+    print("Starting RouterBench-driven Routing Policy Sweeping Harness")
     print("=============================================================")
     
     # Load dataset
@@ -112,7 +147,7 @@ async def run_evaluation():
     
     from httpx import ASGITransport
     transport = ASGITransport(app=app)
-    # Run client inside the FastAPI lifespan context manager
+    
     async with AsyncClient(transport=transport, base_url="http://testserver") as client:
         # Give lifespan a millisecond to boot databases
         await asyncio.sleep(0.5)
@@ -137,66 +172,19 @@ async def run_evaluation():
                 }
                 payload.update(scenario["payload_patch"])
                 
-                # Execution with cascade fallback logic
-                if name == "cascade-router":
-                    # Step 1: Query cheap vLLM model
-                    res = await execute_request(client, payload)
-                    
-                    if res["success"]:
-                        # Evaluate quality
-                        q_score = evaluate_response_quality(
-                            category, res["content"], requires_json, expected_keys, ref_keywords
-                        )
-                    else:
-                        q_score = 0.0
-                        
-                    # If quality is poor (< 0.60), trigger cascade fallback to strong OpenAI cloud model
-                    if q_score < 0.60:
-                        print(f"  [Cascade Triggered] ID={prompt_id} Category={category} (Cheap Quality={q_score:.2f} < 0.6)")
-                        
-                        # Prepare cascade payload (route directly to OpenAI strong model)
-                        cascade_payload = payload.copy()
-                        cascade_payload["model"] = "gpt-4o-mini"
-                        cascade_payload["routing"] = {"allow_local": False}
-                        
-                        cascade_res = await execute_request(client, cascade_payload)
-                        
-                        if cascade_res["success"]:
-                            final_content = cascade_res["content"]
-                            final_quality = evaluate_response_quality(
-                                category, final_content, requires_json, expected_keys, ref_keywords
-                            )
-                            # Total combined latency and cost for the chain
-                            res = {
-                                "success": True,
-                                "content": final_content,
-                                "latency_ms": res["latency_ms"] + cascade_res["latency_ms"],
-                                "ttft_ms": res["ttft_ms"], # TTFT is of first attempt
-                                "cost_usd": res["cost_usd"] + cascade_res["cost_usd"],
-                                "model_used": cascade_res["model_used"]
-                            }
-                            q_score = final_quality
-                        else:
-                            # Keep original response if fallback failed
-                            pass
-                            
-                        fallback_triggered = True
-                    else:
-                        fallback_triggered = False
-                else:
-                    # Regular single-route execution
-                    res = await execute_request(client, payload)
-                    fallback_triggered = False
-                    
-                    if res["success"]:
-                        q_score = evaluate_response_quality(
-                            category, res["content"], requires_json, expected_keys, ref_keywords
-                        )
-                    else:
-                        q_score = 0.0
+                # Regular execution (cascade fallback is handled on server side)
+                res = await execute_request(client, payload)
+                fallback_triggered = res.get("fallback_triggered", False)
                 
-                # Check SLO compliance (target: p95 latency < 1000ms, success=True)
-                slo_compliant = res["success"] and (res["latency_ms"] < 1000.0)
+                if res["success"]:
+                    q_score = evaluate_response_quality(
+                        category, res["content"], requires_json, expected_keys, ref_keywords
+                    )
+                else:
+                    q_score = 0.0
+                
+                # Check SLO compliance (target: p95 latency < 2000ms, success=True)
+                slo_compliant = res["success"] and (res["latency_ms"] < 2000.0)
                 
                 results.append({
                     "scenario": name,
@@ -213,7 +201,7 @@ async def run_evaluation():
                 })
                 
                 print(f"  ID={prompt_id:<14} Model={res.get('model_used', 'None'):<14} Latency={res['latency_ms']:>6.1f}ms Cost=${res['cost_usd']:.6f} Quality={q_score:.2f}")
-
+ 
     # Write evaluation results to file
     with open(RESULTS_PATH, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=2)

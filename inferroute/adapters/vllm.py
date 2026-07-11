@@ -236,9 +236,10 @@ class VLLMAdapter(BaseAdapter):
             cost = self._get_cost(prompt_tokens, completion_tokens)
             PROVIDER_COST_USD_TOTAL.labels(backend="vllm", tenant=req.get("tenant_id", "anonymous")).inc(cost)
             
-            content = "This is a mock response from local vLLM. It matches your structural design patterns and is fully functional."
-            if "response_format" in req and req["response_format"].get("type") == "json_schema":
-                content = '{"invoice_id": "MOCK-12345", "amount": 99.99}'
+            from inferroute.adapters.mock_generator import generate_mock_reply
+            messages = req.get("messages", [])
+            prompt = messages[-1].get("content", "") if messages else ""
+            content = generate_mock_reply(prompt, "vllm")
                 
             return {
                 "id": "mock-vllm-completion-123",
@@ -278,9 +279,10 @@ class VLLMAdapter(BaseAdapter):
         prompt_tokens = prompt_len // 4 + 5
         
         # Stream chunks simulation
-        content = "This is a streaming mock response from local vLLM. It confirms execution paths and fallback routes."
-        if "response_format" in req and req["response_format"].get("type") == "json_schema":
-            content = '{"invoice_id": "MOCK-STREAM-99", "amount": 42.50}'
+        from inferroute.adapters.mock_generator import generate_mock_reply
+        messages = req.get("messages", [])
+        prompt = messages[-1].get("content", "") if messages else ""
+        content = generate_mock_reply(prompt, "vllm")
             
         words = content.split(" ")
         

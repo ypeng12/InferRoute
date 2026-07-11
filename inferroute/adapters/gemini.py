@@ -249,9 +249,10 @@ class GeminiAdapter(BaseAdapter):
                 backend="gemini", tenant=req.get("tenant_id", "anonymous")
             ).inc(cost)
 
-            content = "This is a mock response from Google Gemini. The model is running in simulation mode."
-            if "response_format" in req and req["response_format"].get("type") == "json_schema":
-                content = '{"invoice_id": "GEMINI-MOCK-001", "amount": 55.00}'
+            from inferroute.adapters.mock_generator import generate_mock_reply
+            messages = req.get("messages", [])
+            prompt = messages[-1].get("content", "") if messages else ""
+            content = generate_mock_reply(prompt, "gemini")
 
             return {
                 "id": f"gemini-mock-{int(time.time())}",
@@ -281,9 +282,10 @@ class GeminiAdapter(BaseAdapter):
         prompt_len = sum(len(m.get("content", "")) for m in req.get("messages", []))
         prompt_tokens = prompt_len // 4 + 5
 
-        content = "This is a streaming mock from Gemini, confirming multi-provider routing and fallback paths."
-        if "response_format" in req and req["response_format"].get("type") == "json_schema":
-            content = '{"invoice_id": "GEMINI-STREAM-001", "amount": 77.50}'
+        from inferroute.adapters.mock_generator import generate_mock_reply
+        messages = req.get("messages", [])
+        prompt = messages[-1].get("content", "") if messages else ""
+        content = generate_mock_reply(prompt, "gemini")
 
         words = content.split(" ")
         start_time = time.time()

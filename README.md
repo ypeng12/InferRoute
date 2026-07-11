@@ -39,9 +39,9 @@ InferRoute is designed for high-throughput, low routing overhead, and self-heali
 * **The Problem**: Cheap local models are fast and free, but prone to formatting failures, infinite loops, or repetitive garbage outputs.
 * **Our Solution**: Integrates a stream-buffering validator. It inspects the first few tokens of cheap local model outputs. If a repetitive pattern is detected, it triggers **instant speculative cancellation** and transparently cascades the request to high-quality cloud models (e.g., GPT-4o) in the middle of the request lifecycle, minimizing service disruption.
 
-### 5. 🧠 Learning-Based LLM Router & Reproducible Benchmark
+### 5. 🧠 RouterBench-Inspired Predictive Routing
 * **The Problem**: Statically routing requests or using manual heuristic scoring is hard to tune, and it's difficult to verify the performance/cost benefit of routing without a reproducible evaluation framework.
-* **Our Solution**: Developed a **predictive router classifier** (`inferroute/learned_router.py`) that extracts prompt features (categorizing math, code, JSON extraction, context size) to dynamically route queries. Added a **reproducible evaluation harness** in the `benchmarks/` directory containing workloads, programmatic quality evaluation, and automatic Pareto Cost-Quality frontier plotting tools.
+* **Our Solution**: Implemented content-aware predictive routers (KNN, MLP, Rule) based on the **RouterBench** framework. It extracts prompt features to predict qualities and optimizes the cost-quality trade-off dynamically.
 
 ### 6. 💳 Multi-Tenant Billing & Simulated Wallet
 * Built-in multi-tenant isolation with token-cost calculation.
@@ -49,18 +49,72 @@ InferRoute is designed for high-throughput, low routing overhead, and self-heali
 
 ---
 
+## 🧠 RouterBench Integration & Theoretical Foundations
+
+> [!TIP]
+> For a detailed breakdown of routing algorithms, mathematical proofs, and model mapping logic, see our dedicated **[Academic Foundations Guide](docs/academic_foundations.md)**.
+
+InferRoute integrates the core routing methodologies and trade-off evaluation principles from the research paper:
+> **ROUTERBENCH: A Benchmark for Multi-LLM Routing System** (by Martian / [withmartian/routerbench](https://github.com/withmartian/routerbench)).
+
+### 1. Mathematical Scoring & Optimization
+Predictive routing is formulated as choosing a backend $m$ that maximizes the utility score for a prompt $x$:
+$$\text{Score}(m) = \lambda \cdot \text{Quality}_{\text{pred}}(m) - \text{Cost}(m)$$
+
+Where:
+* **$\lambda$ (lambda)**: User's willingness to pay. A high $\lambda$ (e.g. 5.0) prioritizes output quality (routing to GPT-4o-mini or Gemini-Flash). A low $\lambda$ (e.g. 0.1) prioritizes cost savings (routing to local vLLM/Ollama).
+* **$\text{Quality}_{\text{pred}}(m)$**: Predicted quality score of model $m$ on prompt $x$ (ranging from $0.0$ to $1.0$).
+* **$\text{Cost}(m)$**: The estimated economic API fee to process the request on backend $m$.
+
+### 2. Supported Routing Policies
+InferRoute supports six distinct routing strategies aligned with the paper's framework:
+1. **🎲 Zero Router Baseline (`zero`)**: Non-content-aware routing. Randomly routes requests to Cloud/Expensive vs. Local/Cheap backends based on a target cloud mixture ratio $p$. Sweeping $p \in [0, 1]$ constructs the baseline cost-quality curve.
+2. **📋 Rule-Based Router (`rule`)**: Content-aware heuristics. Evaluates prompt keywords to route tasks (e.g., routing math tasks to GPT/Gemini, coding tasks to vLLM, simple greetings to Ollama).
+3. **🧠 KNN-Based Router (`knn`)**: Retrieves the $K$ most textually similar prompts (using Jaccard similarity) from historical benchmark outcomes. Computes the average historical quality per backend and optimizes via $\lambda \cdot \text{Quality} - \text{Cost}$.
+4. **🕸️ MLP-Based Router (`mlp`)**: A fast logistic regression classifier that extracts prompt features (`is_code`, `is_math`, `is_json`, `is_long`) to predict success probability as predicted quality, then optimizes using the cost-quality formula.
+5. **🔮 Oracle Router Offline Upper Bound (`oracle`)**: A theoretical upper bound that has advance knowledge of whether each model will answer correctly. It selects the cheapest model that achieves a quality score $\ge 0.8$.
+6. **🔄 Cascade Router (FrugalGPT) (`cascade`)**: Server-side model cascade. Executes the cascade chain (cheap local models up to premium cloud models) until the reliability judge score meets the acceptance threshold $\tau$.
+
+### 3. Metric: AIQ (Area Under the Curve)
+To measure a router's overall efficiency across all budgets, we compute the **AIQ (Area under the cost-quality curve)** using the Trapezoidal Rule over swept parameter values ($\lambda$ or $p$):
+$$\text{AIQ} = \int_{c_{\min}}^{c_{\max}} Q(c) \, dc \approx \sum_{i=0}^{n-1} \frac{q_i + q_{i+1}}{2} \cdot (c_{i+1} - c_i)$$
+
+A smart, content-aware learned router (MLP/KNN) will push the Pareto frontier towards the top-left, achieving a **significantly higher AIQ** than the Zero Router baseline.
+
+---
+
+## 🔄 FrugalGPT Cascading Inference (LLM Cascade)
+
+InferRoute integrates the cost-performance optimization concepts from the paper:
+> **FrugalGPT: How to Use Large Language Models While Reducing Cost and Improving Performance** (by Stanford University / arXiv:2305.05196).
+
+FrugalGPT identifies three main classes of cost-saving methods:
+1. **Prompt Adaptation**: Reduces input tokens dynamically. In InferRoute, when routing to cheap local backends (Ollama/vLLM), the **Prompt Adapter** (`prompt_adapter.py`) automatically compresses prompt sizes by pruning few-shot examples, restoring full prompts when upgrading to premium models.
+2. **LLM Approximation (Completion Cache)**: Caches full answers. Handled by InferRoute's exact completions caching layer in Redis.
+3. **LLM Cascade**: Sequential invocation of backends (e.g., `ollama` ➔ `vllm` ➔ `gemini` ➔ `openai`). The request starts with the cheapest backend, passes through a **Reliability Judge** (syntactic check, schema validation, loop penalty), and only escalates to a more expensive tier if the quality score is below the acceptance threshold $\tau$.
+
+### 1. Cascade Configuration
+
+Select `Cascade Router (FrugalGPT Style)` in the routing options, and adjust the acceptance threshold $\tau \in [0.0, 1.0]$. The gateway executes the cascade loop entirely server-side, accumulating tokens and fees across all tried models to log in the PostgreSQL database correctly.
+
+### 2. Streaming Cascade Buffer
+
+To prevent leaking low-quality responses to clients during streaming requests, the gateway buffers stream chunks internally, executes quality grading, and only pumps the SSE stream to the client once the output is officially accepted.
+
+---
+
 ## 📊 Reproducible Evaluation Harness
 
-InferRoute includes a standardized pipeline to test and compare multiple routing strategies under realistic workloads:
+InferRoute includes a standardized pipeline to test and compare multiple routing strategies under realistic workloads, sweeping ratios and lambdas to trace Pareto frontiers:
 
 ```bash
-# 1. Run the evaluation orchestrator against local simulation adapters
+# 1. Run the evaluation orchestrator (sweeps Zero Router p-ratios and KNN/MLP lambda values)
 python benchmarks/run_router_eval.py
 
-# 2. Compile stats and generate visual Pareto curves
+# 2. Compile stats, compute AIQ values, and generate visual Pareto curves
 python benchmarks/plot_results.py
 ```
-This runs the dataset prompts across 8 scenarios (Always OpenAI, Always Gemini, Heuristic Router, Learned Router, Cascade Router, etc.) and outputs latency, TTFT, cost, quality score, and SLO compliance results to `benchmarks/results/`.
+This runs the dataset prompts across all scenarios and sweeps, and outputs cost, quality, latencies, SLO compliance, and AIQ comparisons to `benchmarks/results/`.
 
 ---
 
@@ -175,6 +229,7 @@ for chunk in response:
 ## 📚 Project Documentation
 
 Explore the following detailed guides for in-depth engineering breakdowns:
+* **[Academic Research & Mathematical Foundations](docs/academic_foundations.md)**: Details of how FrugalGPT and RouterBench optimization theories map to our gateway components.
 * **[Performance & Cost Benchmarks](docs/benchmark.md)**: Concrete metrics, cache stampede statistics, and reproduction logs.
 * **[Inference Gateway Architecture](docs/architecture.md)**: Sequence diagrams of the request lifecycle and core sub-components.
 * **[Failure Injection & High Availability](docs/failure-injection.md)**: Details on fail-open mechanisms and circuit breaker status thresholds.

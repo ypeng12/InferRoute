@@ -53,9 +53,20 @@ ADAPTERS: dict[str, Any] = {
     "ollama": OllamaAdapter(),
 }
 
+BACKEND_DEFAULT_MODELS = {
+    "openai": "gpt-4o-mini",
+    "gemini": "gemini-1.5-flash",
+    "vllm": "meta-llama/Meta-Llama-3-8B-Instruct",
+    "ollama": "llama3"
+}
+
 router_engine = Router()
 validator = OutputValidator()
 cache_layer = CacheLayer()
+
+from inferroute.validator import ReliabilityScorer
+from inferroute.prompt_adapter import adapt_prompt
+reliability_scorer = ReliabilityScorer()
 
 from inferroute.rate_limiter import AdaptiveConcurrencyLimiter
 concurrency_limiter = AdaptiveConcurrencyLimiter()
@@ -469,6 +480,26 @@ async def chat_completions(
 
     # 5. Execute
     try:
+        if routing_policy == "cascade":
+            try:
+                cascade_data = json.loads(decision.reason)
+                cascade_chain = cascade_data["cascade_chain"]
+                acceptance_threshold = cascade_data["acceptance_threshold"]
+            except Exception:
+                cascade_chain = [primary_backend]
+                if fallback_backend:
+                    cascade_chain.append(fallback_backend)
+                acceptance_threshold = 0.6
+                
+            if stream_req:
+                return await handle_cascade_streaming_flow(
+                    body, tenant_id, cascade_chain, acceptance_threshold, background_tasks
+                )
+            else:
+                return await handle_cascade_blocking_flow(
+                    body, tenant_id, cascade_chain, acceptance_threshold, background_tasks
+                )
+
         if stream_req:
             return await handle_streaming_flow(
                 body, tenant_id, primary_backend, fallback_backend, routing_policy, decision.slo_compliant, background_tasks
@@ -482,6 +513,326 @@ async def chat_completions(
             await cache_layer.release_dedup_lock(body)
             latency_ms = (time.time() - start_time) * 1000.0
             await concurrency_limiter.release(latency_ms)
+
+
+
+async def handle_cascade_blocking_flow(
+    req: dict[str, Any],
+    tenant_id: str,
+    cascade_chain: list[str],
+    acceptance_threshold: float,
+    background_tasks: BackgroundTasks,
+) -> dict[str, Any]:
+    model_req = req.get("model", "edge/auto")
+    start_time = time.time()
+    
+    cumulative_cost = 0.0
+    cumulative_prompt_tokens = 0
+    cumulative_completion_tokens = 0
+    
+    selected_backend = None
+    final_resp = None
+    step_details = []
+    
+    for idx, backend in enumerate(cascade_chain):
+        # 1. Adapt prompt for cheap/local models (Prompt Adaptation)
+        adapted_messages = adapt_prompt(req.get("messages", []), backend)
+        backend_req = req.copy()
+        backend_req["messages"] = adapted_messages
+        backend_req["model"] = BACKEND_DEFAULT_MODELS.get(backend, backend)
+        
+        QUEUE_DEPTH.labels(backend=backend).inc()
+        cb = circuit_breaker.get_circuit_breaker(backend)
+        
+        logger.info(f"[Cascade] Step {idx+1}/{len(cascade_chain)}: Trying backend={backend}")
+        
+        try:
+            # Execute request on target backend
+            resp = await ADAPTERS[backend].generate(backend_req)
+            await cb.record_success()
+            
+            # Extract content and evaluate reliability
+            choices = resp.get("choices", [])
+            content = choices[0].get("message", {}).get("content", "") if choices else ""
+            
+            # Score response
+            score = reliability_scorer.evaluate_reliability(req, content)
+            logger.info(f"[Cascade] Backend {backend} produced score {score:.2f} (threshold: {acceptance_threshold:.2f})")
+            
+            # Add step details for front-end rendering
+            step_details.append({
+                "backend": backend,
+                "score": score,
+                "accepted": score >= acceptance_threshold
+            })
+            
+            # Keep track of cumulative tokens & cost
+            usage = resp.get("usage", {})
+            cumulative_prompt_tokens += usage.get("prompt_tokens", 0)
+            cumulative_completion_tokens += usage.get("completion_tokens", 0)
+            cumulative_cost += usage.get("estimated_cost_usd", 0.0)
+            
+            # Check acceptance condition
+            if score >= acceptance_threshold or idx == len(cascade_chain) - 1:
+                # Accepted or reached the end of the chain
+                selected_backend = backend
+                final_resp = resp
+                QUEUE_DEPTH.labels(backend=backend).dec()
+                break
+                
+            logger.info(f"[Cascade] Score {score:.2f} < threshold {acceptance_threshold:.2f}. Escalating to next tier...")
+            
+        except Exception as e:
+            await cb.record_failure()
+            logger.warning(f"[Cascade] Backend {backend} failed: {e}")
+            step_details.append({
+                "backend": backend,
+                "score": 0.0,
+                "accepted": False,
+                "error": str(e)
+            })
+            
+        QUEUE_DEPTH.labels(backend=backend).dec()
+        
+    if not final_resp:
+        raise HTTPException(status_code=502, detail="All cascade models failed to respond.")
+        
+    latency_ms = (time.time() - start_time) * 1000.0
+    slo_met = latency_ms <= settings.SLO_P95_MS
+    
+    # Force output model name to show which model accepted
+    final_resp["model"] = selected_backend
+    
+    # Store exact cache and publish dedup
+    await cache_layer.store_exact(req, final_resp)
+    await cache_layer.publish_dedup_result(req, final_resp)
+    
+    # Log request in database with cumulative costs & tokens
+    background_tasks.add_task(
+        db_log_request,
+        tenant_id=tenant_id,
+        model=final_resp.get("model", model_req),
+        logical_model=model_req,
+        provider=selected_backend,
+        prompt_tokens=cumulative_prompt_tokens,
+        completion_tokens=cumulative_completion_tokens,
+        cost_usd=cumulative_cost,
+        cache_hit=False, cache_type=None, prefix_cache_hit=False, dedup_hit=False,
+        primary_backend=cascade_chain[0],
+        selected_backend=selected_backend,
+        fallback_count=len(step_details) - 1,
+        routing_policy="cascade",
+        circuit_state="CLOSED", slo_met=slo_met,
+        status_str="completed", error_message=None,
+        queue_ms=0.0, ttft_ms=latency_ms, latency_ms=latency_ms,
+    )
+    
+    REQUESTS_TOTAL.labels(tenant=tenant_id, model=model_req, backend=selected_backend, status="completed").inc()
+    REQUEST_LATENCY.labels(tenant=tenant_id, model=model_req, backend=selected_backend).observe(latency_ms / 1000.0)
+    await router_engine.record_metrics(selected_backend, latency_ms, latency_ms, success=True)
+    
+    # Enrich response payload for frontend visualization
+    final_resp["logical_model"] = model_req
+    final_resp["usage"] = {
+        "prompt_tokens": cumulative_prompt_tokens,
+        "completion_tokens": cumulative_completion_tokens,
+        "total_tokens": cumulative_prompt_tokens + cumulative_completion_tokens,
+        "estimated_cost_usd": cumulative_cost
+    }
+    final_resp["route"] = {
+        "selected_backend": selected_backend,
+        "fallback_count": len(step_details) - 1,
+        "cache_hit": False,
+        "policy": "cascade",
+        "slo_met": slo_met,
+        "cascade_steps": step_details
+    }
+    
+    return final_resp
+
+
+async def handle_cascade_streaming_flow(
+    req: dict[str, Any],
+    tenant_id: str,
+    cascade_chain: list[str],
+    acceptance_threshold: float,
+    background_tasks: BackgroundTasks,
+) -> StreamingResponse:
+    model_req = req.get("model", "edge/auto")
+
+    async def event_generator():
+        start_time = time.time()
+        cumulative_cost = 0.0
+        cumulative_prompt_tokens = 0
+        cumulative_completion_tokens = 0
+        
+        selected_backend = None
+        step_details = []
+        final_text = ""
+        ttft_ms = 0.0
+        ttft_recorded = False
+        
+        for idx, backend in enumerate(cascade_chain):
+            # 1. Adapt prompt for cheap/local models (Prompt Adaptation)
+            adapted_messages = adapt_prompt(req.get("messages", []), backend)
+            backend_req = req.copy()
+            backend_req["messages"] = adapted_messages
+            backend_req["model"] = BACKEND_DEFAULT_MODELS.get(backend, backend)
+            
+            QUEUE_DEPTH.labels(backend=backend).inc()
+            cb = circuit_breaker.get_circuit_breaker(backend)
+            
+            logger.info(f"[Cascade Stream] Step {idx+1}/{len(cascade_chain)}: Trying backend={backend}")
+            
+            buffered_events = []
+            backend_text = ""
+            backend_prompt_tokens = 0
+            backend_completion_tokens = 0
+            backend_cost = 0.0
+            
+            try:
+                async for chunk in ADAPTERS[backend].generate_stream(backend_req):
+                    if "usage" in chunk:
+                        usage = chunk["usage"]
+                        backend_prompt_tokens = usage.get("prompt_tokens", 0)
+                        backend_completion_tokens = usage.get("completion_tokens", 0)
+                        backend_cost = usage.get("estimated_cost_usd", 0.0)
+                        continue
+                        
+                    choices = chunk.get("choices", [])
+                    content_chunk = ""
+                    if choices and choices[0].get("delta", {}).get("content"):
+                        content_chunk = choices[0]["delta"]["content"]
+                        backend_text += content_chunk
+                        if not ttft_recorded:
+                            ttft_ms = (time.time() - start_time) * 1000.0
+                            ttft_recorded = True
+                            TTFT_LATENCY.labels(tenant=tenant_id, model=model_req, backend=backend).observe(ttft_ms / 1000.0)
+                    
+                    buffered_events.append(chunk)
+                    
+                await cb.record_success()
+                
+                # Score response
+                score = reliability_scorer.evaluate_reliability(req, backend_text)
+                logger.info(f"[Cascade Stream] Backend {backend} produced score {score:.2f} (threshold: {acceptance_threshold:.2f})")
+                
+                step_details.append({
+                    "backend": backend,
+                    "score": score,
+                    "accepted": score >= acceptance_threshold
+                })
+                
+                cumulative_prompt_tokens += backend_prompt_tokens
+                cumulative_completion_tokens += backend_completion_tokens
+                cumulative_cost += backend_cost
+                
+                # Check acceptance condition
+                if score >= acceptance_threshold or idx == len(cascade_chain) - 1:
+                    # Accept and output stream!
+                    selected_backend = backend
+                    final_text = backend_text
+                    
+                    # Yield all buffered events to client
+                    chunk_idx = 0
+                    for chunk in buffered_events:
+                        chunk["model"] = selected_backend
+                        yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
+                        await cache_layer.push_stream_chunk(req, chunk_idx, chunk)
+                        chunk_idx += 1
+                        
+                    # Store cache & publish dedup
+                    full_resp = {
+                        "id": f"chatcmpl-{uuid.uuid4()}",
+                        "object": "chat.completion",
+                        "created": int(time.time()),
+                        "model": selected_backend,
+                        "choices": [{"index": 0, "message": {"role": "assistant", "content": final_text}, "finish_reason": "stop"}],
+                        "usage": {
+                            "prompt_tokens": cumulative_prompt_tokens,
+                            "completion_tokens": cumulative_completion_tokens,
+                            "total_tokens": cumulative_prompt_tokens + cumulative_completion_tokens,
+                            "estimated_cost_usd": cumulative_cost
+                        }
+                    }
+                    await cache_layer.store_exact(req, full_resp)
+                    await cache_layer.publish_dedup_result(req, full_resp)
+                    
+                    # Yield final end-of-stream stats chunk
+                    latency_ms = (time.time() - start_time) * 1000.0
+                    slo_met = latency_ms <= settings.SLO_P95_MS
+                    
+                    stats_chunk = {
+                        "id": "inferroute-stream-end",
+                        "object": "chat.completion.chunk",
+                        "model": selected_backend,
+                        "choices": [],
+                        "usage": {
+                            "prompt_tokens": cumulative_prompt_tokens,
+                            "completion_tokens": cumulative_completion_tokens,
+                            "total_tokens": cumulative_prompt_tokens + cumulative_completion_tokens,
+                            "estimated_cost_usd": cumulative_cost
+                        },
+                        "timing": {"ttft_ms": ttft_ms, "latency_ms": latency_ms},
+                        "route": {
+                            "selected_backend": selected_backend,
+                            "fallback_count": len(step_details) - 1,
+                            "slo_met": slo_met,
+                            "policy": "cascade",
+                            "cascade_steps": step_details
+                        }
+                    }
+                    yield f"data: {json.dumps(stats_chunk, ensure_ascii=False)}\n\n"
+                    await cache_layer.push_stream_chunk(req, chunk_idx, stats_chunk)
+                    chunk_idx += 1
+                    await cache_layer.publish_stream_end(req, chunk_idx)
+                    yield "data: [DONE]\n\n"
+                    
+                    # Database log
+                    background_tasks.add_task(
+                        db_log_request,
+                        tenant_id=tenant_id, model=selected_backend, logical_model=model_req,
+                        provider=selected_backend,
+                        prompt_tokens=cumulative_prompt_tokens,
+                        completion_tokens=cumulative_completion_tokens,
+                        cost_usd=cumulative_cost,
+                        cache_hit=False, cache_type=None, prefix_cache_hit=False, dedup_hit=False,
+                        primary_backend=cascade_chain[0], selected_backend=selected_backend,
+                        fallback_count=len(step_details) - 1,
+                        routing_policy="cascade", circuit_state="CLOSED", slo_met=slo_met,
+                        status_str="completed", error_message=None,
+                        queue_ms=0.0, ttft_ms=ttft_ms, latency_ms=latency_ms,
+                    )
+                    REQUESTS_TOTAL.labels(tenant=tenant_id, model=model_req, backend=selected_backend, status="completed").inc()
+                    REQUEST_LATENCY.labels(tenant=tenant_id, model=model_req, backend=selected_backend).observe(latency_ms / 1000.0)
+                    await router_engine.record_metrics(selected_backend, ttft_ms, latency_ms, success=True)
+                    
+                    QUEUE_DEPTH.labels(backend=backend).dec()
+                    break
+                    
+                logger.info(f"[Cascade Stream] Score {score:.2f} < threshold {acceptance_threshold:.2f}. Escalating stream...")
+                
+            except Exception as e:
+                await cb.record_failure()
+                logger.warning(f"[Cascade Stream] Backend {backend} stream failed: {e}")
+                step_details.append({
+                    "backend": backend,
+                    "score": 0.0,
+                    "accepted": False,
+                    "error": str(e)
+                })
+                
+            QUEUE_DEPTH.labels(backend=backend).dec()
+            
+        else:
+            yield f"data: {json.dumps({'error': 'All cascade models failed.'})}\n\n"
+            yield "data: [DONE]\n\n"
+            
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "Connection": "keep-alive"}
+    )
 
 
 def _stream_cached_response(cached_resp: dict[str, Any]) -> StreamingResponse:
@@ -868,7 +1219,12 @@ async def handle_streaming_flow(
                     "total_tokens": prompt_tokens + completion_tokens, "estimated_cost_usd": cost_usd,
                 },
                 "timing": {"ttft_ms": ttft_ms, "latency_ms": latency_ms},
-                "route": {"selected_backend": selected_backend, "fallback_count": fallback_count, "slo_met": slo_met},
+                "route": {
+                    "selected_backend": selected_backend,
+                    "fallback_count": fallback_count,
+                    "slo_met": slo_met,
+                    "policy": routing_policy,
+                },
             }
             yield f"data: {json.dumps(stats_chunk, ensure_ascii=False)}\n\n"
             await cache_layer.push_stream_chunk(req, chunk_idx, stats_chunk)

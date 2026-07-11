@@ -285,27 +285,127 @@ class Router:
             ROUTING_DECISION_TOTAL.labels(policy="hard_pin", backend=pinned_backend).inc()
             return RoutingDecision(pinned_backend, pinned_fallback, pinned_reason, True, "hard_pin")
 
-        # ── Learned Router Policy ─────────────────────────────────────────────
-        if policy == "learned":
-            from inferroute.learned_router import learned_router
+        # ── RouterBench Policies ──────────────────────────────────────────────
+        # Reference paper: "ROUTERBENCH: A Benchmark for Multi-LLM Routing System" (withmartian/routerbench)
+        if policy in ("zero", "rule", "knn", "mlp", "oracle", "learned", "cascade"):
             prompt_text = " ".join(m.get("content", "") for m in req.get("messages", []))
-            recommended = learned_router.predict_backend(prompt_text)
-            
-            cb = circuit_breaker.get_circuit_breaker(recommended)
-            cb_allowed = await cb.allow_request()
-            
-            final_backend = recommended
-            reason = f"Learned Router recommendation: {recommended}"
-            
-            if not cb_allowed:
-                fallback_backend = "openai" if recommended == "vllm" else "vllm"
-                logger.warning(f"[Router] Learned backend '{recommended}' is OPEN. Falling back to '{fallback_backend}'.")
-                final_backend = fallback_backend
-                reason = f"Learned Router fallback: {fallback_backend} (original {recommended} was open)"
-            
-            fallback_option = "gemini" if final_backend == "openai" else "openai"
-            ROUTING_DECISION_TOTAL.labels(policy="learned", backend=final_backend).inc()
-            return RoutingDecision(final_backend, fallback_option, reason, True, "learned")
+            prompt_len = len(prompt_text)
+            input_tokens = prompt_len // 4 + 10
+            expected_output = req.get("max_output_tokens", 256)
+
+            # Estimate candidate costs dynamically for predictive routers
+            backend_costs = {}
+            for backend in ALL_BACKENDS:
+                stats = await self.get_backend_stats(backend)
+                cpt = stats["cost_per_token"]
+                expected_cost = (input_tokens * cpt) + (expected_output * cpt * 2.0)
+                backend_costs[backend] = expected_cost
+
+            # Filter candidates based on availability & circuit breakers
+            allow_local = routing_opts.get("allow_local", True)
+            allow_cloud = routing_opts.get("allow_cloud", True)
+            local_backends = {"vllm", "ollama"}
+            cloud_backends = {"openai", "gemini"}
+
+            candidates: list[str] = []
+            for b in ALL_BACKENDS:
+                if b in local_backends and not allow_local:
+                    continue
+                if b in cloud_backends and not allow_cloud:
+                    continue
+                candidates.append(b)
+
+            if not candidates:
+                candidates = ALL_BACKENDS[:]
+
+            available: list[str] = []
+            for b in candidates:
+                cb = circuit_breaker.get_circuit_breaker(b)
+                if await cb.allow_request():
+                    available.append(b)
+
+            if not available:
+                available = candidates[:1]
+
+            selected_backend = None
+            reason = f"Routed via policy='{policy}'"
+
+            if policy == "zero":
+                from inferroute.learned_router import zero_router
+                # Zero Router baseline
+                mixture_ratio = routing_opts.get("mixture_ratio", 0.5)
+                selected_backend = zero_router.choose_backend(mixture_ratio, available)
+                reason = f"Zero Router baseline (mixture_ratio={mixture_ratio:.2f}) recommended: {selected_backend}"
+
+            elif policy == "rule":
+                from inferroute.learned_router import rule_router
+                # Rule-based router
+                selected_backend = rule_router.choose_backend(prompt_text, available)
+                reason = f"Rule Router heuristics recommended: {selected_backend}"
+
+            elif policy == "knn":
+                from inferroute.learned_router import knn_router
+                # KNN Router: score = lambda * quality - cost
+                lambda_val = routing_opts.get("lambda", 1.0)
+                selected_backend = knn_router.choose_backend(prompt_text, backend_costs, lambda_val, available)
+                reason = f"KNN Router (lambda={lambda_val:.3f}) recommended: {selected_backend}"
+
+            elif policy == "mlp":
+                from inferroute.learned_router import mlp_router
+                # MLP Router: score = lambda * quality - cost
+                lambda_val = routing_opts.get("lambda", 1.0)
+                selected_backend = mlp_router.choose_backend(prompt_text, backend_costs, lambda_val, available)
+                reason = f"MLP Router (lambda={lambda_val:.3f}) recommended: {selected_backend}"
+
+            elif policy == "oracle":
+                from inferroute.learned_router import oracle_router
+                # Oracle Router: offline theoretical upper bound
+                selected_backend = oracle_router.choose_backend(prompt_text, available)
+                reason = f"Oracle Router offline upper-bound recommended: {selected_backend}"
+
+            elif policy == "learned":
+                # Legacy learned router routing to openai or vllm
+                from inferroute.learned_router import learned_router
+                selected_backend = learned_router.predict_backend(prompt_text)
+                if selected_backend not in available:
+                    selected_backend = available[0]
+                reason = f"Legacy Learned Router recommended: {selected_backend}"
+
+            elif policy == "cascade":
+                # FrugalGPT Cascade Router
+                custom_chain = routing_opts.get("cascade_chain")
+                if custom_chain and isinstance(custom_chain, list):
+                    cascade_chain = [b for b in custom_chain if b in available]
+                else:
+                    cascade_chain = sorted(available, key=lambda b: backend_costs.get(b, 0.0))
+                
+                if not cascade_chain:
+                    cascade_chain = ["ollama", "vllm", "gemini", "openai"]
+                
+                acceptance_threshold = routing_opts.get("acceptance_threshold", 0.6)
+                selected_backend = cascade_chain[0]
+                reason = json.dumps({
+                    "cascade_chain": cascade_chain,
+                    "acceptance_threshold": acceptance_threshold
+                })
+
+            # Fallback selection
+            fallback_backend = None
+            for b in available:
+                if b != selected_backend:
+                    fallback_backend = b
+                    break
+            if not fallback_backend:
+                for b in candidates:
+                    if b != selected_backend:
+                        fallback_backend = b
+                        break
+
+            slo_compliant, _ = self._check_slo(selected_backend, await self.get_backend_stats(selected_backend))
+            ROUTING_DECISION_TOTAL.labels(policy=policy, backend=selected_backend).inc()
+            logger.info(f"[Router] {reason}. Fallback: {fallback_backend}")
+            return RoutingDecision(selected_backend, fallback_backend, reason, slo_compliant, policy)
+
 
         # ── Candidate filtering ───────────────────────────────────────────────
         allow_local = routing_opts.get("allow_local", True)

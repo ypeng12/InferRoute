@@ -364,7 +364,10 @@
             transition: all 0.5s ease;
         }
 
-        .pipeline-step.active {
+        .pipeline-step.active,
+        .pipeline-step.success,
+        .pipeline-step.failed,
+        .pipeline-step.warning {
             opacity: 1;
         }
 
@@ -395,6 +398,12 @@
             background: var(--accent-rose);
             border-color: var(--text-primary);
             box-shadow: 0 0 10px var(--accent-rose);
+        }
+
+        .pipeline-step.warning .pipeline-dot {
+            background: #e67e22;
+            border-color: var(--text-primary);
+            box-shadow: 0 0 10px #e67e22;
         }
 
         .step-info {
@@ -469,22 +478,35 @@
     <main>
         <!-- Left Panel: Chat Playground -->
         <div class="glass-panel playground-container">
-            <div class="panel-header">
-                <div class="panel-title">Interactive Sandbox</div>
-                <div class="controls-row">
-                    <select id="modelSelect">
-                        <option value="edge/auto">🎯 Auto Route (Edge Priority)</option>
-                        <option value="openai/gpt-4o-mini">Cloud: OpenAI GPT-4o-mini</option>
-                        <option value="gemini/gemini-1.5-flash">Cloud: Google Gemini Flash</option>
-                        <option value="vllm/llama-3-8b">Local: vLLM Llama-3-8B</option>
-                        <option value="ollama/llama3">Local: Ollama Llama-3</option>
-                    </select>
-                    <select id="policySelect">
-                        <option value="speculative">🛡️ Speculative Fallback (Cost Saver)</option>
-                        <option value="latency">⚡ Latency-Aware (Fastest)</option>
-                        <option value="cost">💰 Cost-Aware (Cheapest)</option>
-                        <option value="load_balanced">⚖️ Load Balanced</option>
-                    </select>
+            <div class="panel-header" style="flex-direction: column; align-items: stretch; gap: 0.75rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                    <div class="panel-title">Interactive Sandbox</div>
+                    <div class="controls-row">
+                        <select id="modelSelect">
+                            <option value="edge/auto">🎯 Auto Route (Edge Priority)</option>
+                            <option value="openai/gpt-4o-mini">Cloud: OpenAI GPT-4o-mini</option>
+                            <option value="gemini/gemini-1.5-flash">Cloud: Google Gemini Flash</option>
+                            <option value="vllm/llama-3-8b">Local: vLLM Llama-3-8B</option>
+                            <option value="ollama/llama3">Local: Ollama Llama-3</option>
+                        </select>
+                        <select id="policySelect">
+                            <option value="speculative">🛡️ Speculative Fallback (Cost Saver)</option>
+                            <option value="latency">⚡ Latency-Aware (Fastest)</option>
+                            <option value="cost">💰 Cost-Aware (Cheapest)</option>
+                            <option value="zero">🎲 Zero Router (Baseline Mix)</option>
+                            <option value="rule">📋 Rule-Based Router (Heuristics)</option>
+                            <option value="knn">🧠 KNN Router (Contextual Similarity)</option>
+                            <option value="mlp">🕸️ MLP Router (Feature Classifier)</option>
+                            <option value="oracle">🔮 Oracle Router (Theoretical Optimal)</option>
+                            <option value="cascade">🔄 Cascade Router (FrugalGPT Style)</option>
+                        </select>
+                    </div>
+                </div>
+                <!-- Dynamic Parameter Control Slider (RouterBench settings) -->
+                <div id="paramControlContainer" style="display: none; align-items: center; justify-content: flex-end; gap: 1rem; padding: 0.5rem 0; border-top: 1px solid var(--border-color); font-size: 0.85rem; width: 100%;">
+                    <span id="paramLabel" style="color: var(--text-secondary);">Willingness to Pay (λ):</span>
+                    <input type="range" id="paramSlider" min="0" max="5" step="0.1" value="1.0" style="width: 180px; accent-color: var(--accent-violet); cursor: pointer;">
+                    <span id="paramVal" style="color: var(--accent-violet); font-weight: 600; min-width: 35px; text-align: right;">1.0</span>
                 </div>
             </div>
             <div class="chat-history" id="chatHistory">
@@ -731,6 +753,16 @@
                 routing: { policy: policyVal }
             };
 
+            // Inject dynamic parameter values for RouterBench policies
+            const paramSlider = document.getElementById('paramSlider');
+            if (policyVal === 'knn' || policyVal === 'mlp') {
+                requestBody.routing.lambda = parseFloat(paramSlider.value);
+            } else if (policyVal === 'zero') {
+                requestBody.routing.mixture_ratio = parseFloat(paramSlider.value);
+            } else if (policyVal === 'cascade') {
+                requestBody.routing.acceptance_threshold = parseFloat(paramSlider.value);
+            }
+
             try {
                 const response = await fetch('/v1/chat/completions', {
                     method: 'POST',
@@ -814,7 +846,14 @@
                                     activateStep('stepExecute', 'success', `Executed on primary: ${route.selected_backend}`);
                                     activateStep('stepValidate', 'success', 'All loops & syntax validation checks passed');
                                     
-                                    if (route.fallback_count > 0) {
+                                    if (route.policy === 'cascade' && route.cascade_steps) {
+                                        const trace = route.cascade_steps.map(s => {
+                                            const status = s.accepted ? '✅' : '❌';
+                                            return `${s.backend.toUpperCase()} (${s.score.toFixed(2)}${status})`;
+                                        }).join(' ➔ ');
+                                        const anyFail = route.cascade_steps.some(s => !s.accepted);
+                                        activateStep('stepCascade', anyFail ? 'warning' : 'success', `Cascade Trace: ${trace}`);
+                                    } else if (route.fallback_count > 0) {
                                         activateStep('stepCascade', 'failed', `Primary quality check failed. Cascaded to Cloud!`);
                                     } else {
                                         activateStep('stepCascade', 'success', 'Quality passed. Primary succeeded.');
@@ -857,6 +896,49 @@
             }
         }
 
+        // Dynamic slider visibility and values updating (RouterBench integration)
+        const paramControlContainer = document.getElementById('paramControlContainer');
+        const paramLabel = document.getElementById('paramLabel');
+        const paramSlider = document.getElementById('paramSlider');
+        const paramVal = document.getElementById('paramVal');
+
+        function updateParamSliderVisibility() {
+            const policy = policySelect.value;
+            if (policy === 'knn' || policy === 'mlp') {
+                paramControlContainer.style.display = 'flex';
+                paramLabel.innerText = 'Willingness to Pay (λ):';
+                paramSlider.min = '0';
+                paramSlider.max = '5';
+                paramSlider.step = '0.1';
+                paramSlider.value = '1.0';
+                paramVal.innerText = '1.00';
+            } else if (policy === 'zero') {
+                paramControlContainer.style.display = 'flex';
+                paramLabel.innerText = 'Cloud Mixture Ratio (p):';
+                paramSlider.min = '0';
+                paramSlider.max = '1';
+                paramSlider.step = '0.05';
+                paramSlider.value = '0.5';
+                paramVal.innerText = '0.50';
+            } else if (policy === 'cascade') {
+                paramControlContainer.style.display = 'flex';
+                paramLabel.innerText = 'Acceptance Threshold (τ):';
+                paramSlider.min = '0';
+                paramSlider.max = '1';
+                paramSlider.step = '0.05';
+                paramSlider.value = '0.6';
+                paramVal.innerText = '0.60';
+            } else {
+                paramControlContainer.style.display = 'none';
+            }
+        }
+
+        policySelect.addEventListener('change', updateParamSliderVisibility);
+        paramSlider.addEventListener('input', () => {
+            const val = parseFloat(paramSlider.value);
+            paramVal.innerText = val.toFixed(2);
+        });
+
         // Event hooks
         sendBtn.addEventListener('click', sendMessage);
         document.getElementById('rechargeBtn').addEventListener('click', rechargeWallet);
@@ -870,6 +952,8 @@
 
         // Initialize metrics on page load
         fetchLifetimeMetrics();
+        updateParamSliderVisibility();
+
     </script>
 </body>
 </html>
