@@ -665,17 +665,23 @@
                 <div class="card-grid">
                     <div class="sub-card">
                         <h3>1. Prompt Adaptation</h3>
-                        <p>Automatically prunes long few-shot example prefixes down to at most 1 example when executing requests on cheap local models (Ollama/vLLM), restoring full prompt complexity when cascading to premium endpoints.</p>
+                        <p>Prunes long prompt histories or few-shot example prefixes down to at most 1 context example when querying cheap local models (Ollama/vLLM), restoring full complexity only when cascading to commercial endpoints.</p>
                     </div>
                     <div class="sub-card">
-                        <h3>2. LLM Approximation (Cache)</h3>
-                        <p>Leverages Redis-based exact completions caching. Exact query matches avoid upstream model execution fees entirely, yielding prompt completions in under 10ms.</p>
+                        <h3>2. LLM Approximation (Redis Cache)</h3>
+                        <p>Uses standard Redis completion caches. Matches queries in under 10ms, avoiding upstream model fees completely for exact duplicate concurrent prompts.</p>
                     </div>
                 </div>
 
-                <div class="sub-card" style="margin-top: 1.5rem;">
-                    <h3>3. LLM Cascade</h3>
-                    <p>Routes requests sequentially starting from low-cost providers (Ollama) to cloud backups (OpenAI). At each tier, the output is graded by a Reliability Judge. Escalation triggers instantly if the quality score is below the threshold \(\tau\).</p>
+                <div class="card-grid" style="margin-top: 1.5rem;">
+                    <div class="sub-card">
+                        <h3>3. Sequential LLM Cascade</h3>
+                        <p>Sequentially routes queries through a chain of backends (Ollama ➔ vLLM ➔ Gemini ➔ OpenAI). A Reliability Judge assesses output quality at each tier, escalating to the next tier if the quality score falls below \(\tau\).</p>
+                    </div>
+                    <div class="sub-card">
+                        <h3>4. Streaming Cascade Buffer Heuristics</h3>
+                        <p>Buffers SSE stream chunks server-side to detect infinite loops or gibberish outputs. Speculatively cancels degraded local streams and escalates to premium cloud nodes mid-stream to avoid client-facing disruptions.</p>
+                    </div>
                 </div>
 
                 <!-- Live Cascade Simulator Box -->
@@ -770,13 +776,16 @@
                         </div>
                     </div>
                     <div class="sub-card">
-                        <h3>3. Predictive Routing Models</h3>
-                        <p>InferRoute implements multiple routers:</p>
-                        <ul style="margin-left: 1.2rem; font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.5rem;">
-                            <li><strong>KNN Router</strong>: Jaccard similarity nearest-neighbor lookup on historical outcomes.</li>
-                            <li><strong>MLP Router</strong>: Feature-based logistic regression model.</li>
-                            <li><strong>Oracle Router</strong>: Theoretical optimal reference.</li>
-                        </ul>
+                        <h3>3. Supported Routing Policies</h3>
+                        <p>InferRoute implements six distinct routing strategies matching the RouterBench & FrugalGPT frameworks:</p>
+                        <div style="display: flex; flex-direction: column; gap: 0.65rem; margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-secondary);">
+                            <div><strong style="color: var(--text-primary);">🎲 Zero Router Baseline (zero):</strong> Non-content-aware routing. Randomly routes requests to Cloud vs. Local backends based on a target mixture ratio \(p \in [0, 1]\) to form the baseline cost-quality curve.</div>
+                            <div><strong style="color: var(--text-primary);">📋 Rule-Based Router (rule):</strong> Content-aware heuristics. Evaluates prompt keywords (e.g., routing math tasks to GPT/Gemini, coding tasks to local vLLM, simple greetings to Ollama).</div>
+                            <div><strong style="color: var(--text-primary);">🧠 KNN-Based Router (knn):</strong> Jaccard nearest-neighbor lookup on historical runs. Finds the \(K\) most similar prompts, averages their quality, and maximizes the score equation.</div>
+                            <div><strong style="color: var(--text-primary);">🕸️ MLP-Based Router (mlp):</strong> A fast logistic regression classifier extracting features (length, code, math, JSON) to predict model success rates and select the highest-scoring backend.</div>
+                            <div><strong style="color: var(--text-primary);">🔮 Oracle Router (oracle):</strong> Theoretical optimal offline reference that has perfect knowledge of outcomes and chooses the cheapest backend that achieves a quality score \(\ge 0.8\).</div>
+                            <div><strong style="color: var(--text-primary);">🔄 Cascade Router (cascade):</strong> FrugalGPT-style sequential escalation. Triggers cascading hops across model tiers if the reliability judge output score falls below threshold \(\tau\).</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -957,6 +966,30 @@ sequenceDiagram
                     </div>
                 </div>
             </div>
+
+            <!-- Playground Control Center Card -->
+            <div class="glass-card" style="margin-top: 2rem;">
+                <h2>🎨 Observability Control Center & Interactive Playground</h2>
+                <p>InferRoute features an interactive client playground dashboard (served at the root <code>/</code> path) allowing developers to monitor and simulate gateway functions in real-time:</p>
+                <div class="card-grid" style="margin-top: 1.5rem;">
+                    <div class="sub-card">
+                        <h3>1. Live Telemetry Cost Dashboard</h3>
+                        <p>Displays financial metrics including cumulative API dollars saved, tokens processed, Redis cache hit rates, average Time-to-First-Token (TTFT), and system uptime in real-time.</p>
+                    </div>
+                    <div class="sub-card">
+                        <h3>2. Interceptor Pipeline Visualizer</h3>
+                        <p>Renders a live vertical step visualizer tracking individual requests. Watch prompts flow through Cache lookup ➔ Concurrency limit verification ➔ Primary model execution ➔ speculative loops cancellation ➔ Cascade trigger.</p>
+                    </div>
+                    <div class="sub-card">
+                        <h3>3. Wallet & Credit Controller</h3>
+                        <p>Simulates tenant wallet balances and limits. Allows manual top-up adjustments (e.g., refilling $10.00 trial credits) to inspect rate-limiting triggers and HTTP 402 payment requirements.</p>
+                    </div>
+                    <div class="sub-card">
+                        <h3>4. Chaos Engineering Panel</h3>
+                        <p>Allows manual injection of failures (latency spikes, HTTP 500 crashes, network dropouts) into specific backend nodes to observe gateway self-healing, automatic failovers, and circuit-breaker status changes in real-time.</p>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Tab 3: Benchmarks -->
@@ -1054,6 +1087,28 @@ sequenceDiagram
                     <div class="sub-card">
                         <h3>80% TTFT Reduction</h3>
                         <p>Prefix-affinity routing identifies Warm KV-caches on GPU nodes using a Radix Trie, routing prompts to nodes with active context caches to eliminate prefill latency.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reproducible Evaluation Sweep Harness -->
+            <div class="glass-card" style="margin-top: 2rem;">
+                <h2>📊 Reproducible Evaluation Sweep Harness</h2>
+                <p>InferRoute provides a built-in evaluation framework to verify the cost-quality trade-offs of all routing algorithms under realistic workload datasets. The system sweeps ratios and willingness-to-pay parameters to export Pareto curves:</p>
+                <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 1rem;">
+                    <div class="sub-card" style="background: rgba(0, 0, 0, 0.01);">
+                        <h3>1. Run the Evaluation Sweep Orchestrator</h3>
+                        <p style="margin-bottom: 0.75rem; font-size: 0.9rem; color: var(--text-secondary);">This script iterates across dataset prompts, simulating requests against mock or real endpoints and logging cost, latency, quality, and routing outputs:</p>
+                        <pre style="background: rgba(0,0,0,0.03); padding: 0.75rem; border-radius: 6px; border: 1px solid var(--border-color); font-family: monospace; color: var(--text-primary); font-size: 0.85rem;">python benchmarks/run_router_eval.py</pre>
+                    </div>
+                    <div class="sub-card" style="background: rgba(0, 0, 0, 0.01);">
+                        <h3>2. Compile Metrics & Generate Pareto Curves</h3>
+                        <p style="margin-bottom: 0.75rem; font-size: 0.9rem; color: var(--text-secondary);">This script reads the raw evaluation outcomes, fits the cost-quality points using the Trapezoidal Rule to calculate Area Under the Curve (AIQ), and exports standard PNG curves:</p>
+                        <pre style="background: rgba(0,0,0,0.03); padding: 0.75rem; border-radius: 6px; border: 1px solid var(--border-color); font-family: monospace; color: var(--text-primary); font-size: 0.85rem;">python benchmarks/plot_results.py</pre>
+                    </div>
+                    <div class="sub-card" style="background: rgba(109, 40, 217, 0.02); border-color: rgba(109, 40, 217, 0.15);">
+                        <h3 style="color: var(--accent-violet);">⚙️ Sweeping Parameters Summary</h3>
+                        <p style="font-size: 0.85rem; color: var(--text-secondary);">The evaluation sweeps the target cloud mixture ratio \(p \in [0, 1]\) for the Zero Router baseline, and sweeping trade-off thresholds \(\lambda \in [0, 1]\) or \(\tau \in [0, 1]\) for KNN, MLP, and Cascade routing algorithms to systematically construct the Pareto frontier.</p>
                     </div>
                 </div>
             </div>
