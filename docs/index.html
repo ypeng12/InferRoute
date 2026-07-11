@@ -11,6 +11,22 @@
     <!-- MathJax for rendering LaTeX formulas -->
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- Mermaid JS for sequence diagrams -->
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'dark',
+            themeVariables: {
+                background: '#111016',
+                primaryColor: '#8B5CF6',
+                primaryTextColor: '#F3F4F6',
+                lineColor: '#9CA3AF',
+                secondaryColor: '#10B981',
+                tertiaryColor: '#F59E0B'
+            }
+        });
+    </script>
     
     <style>
         :root {
@@ -765,13 +781,92 @@
                     </div>
                 </div>
             </div>
+            <!-- Research Papers Reference -->
+            <div class="glass-card" style="margin-top: 2rem;">
+                <h2>📚 Original Research Papers & Download Hub</h2>
+                <p>Read or download the full research publications and project blueprints associated with this routing engine:</p>
+                <div class="paper-grid" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-top: 1.5rem;">
+                    <a href="A_Benchmark_for_Multi_LLM_Routing_System.pdf" download class="sub-card" style="display: flex; flex-direction: column; text-decoration: none; transition: all 0.3s; padding: 1.5rem; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary);">
+                        <span style="font-size: 1.5rem; margin-bottom: 0.5rem;">📄</span>
+                        <span style="font-family: var(--font-outfit); font-weight: 700; font-size: 1.1rem; color: #FFF; margin-bottom: 0.25rem;">RouterBench Paper</span>
+                        <span style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">A Benchmark for Multi-LLM Routing System (Martian, 2024)</span>
+                        <span style="align-self: flex-start; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(139, 92, 246, 0.3); color: #C084FC; font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 6px;">Download PDF</span>
+                    </a>
+                    <a href="How_to_Use_Large_Language_Models.pdf" download class="sub-card" style="display: flex; flex-direction: column; text-decoration: none; transition: all 0.3s; padding: 1.5rem; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary);">
+                        <span style="font-size: 1.5rem; margin-bottom: 0.5rem;">📄</span>
+                        <span style="font-family: var(--font-outfit); font-weight: 700; font-size: 1.1rem; color: #FFF; margin-bottom: 0.25rem;">FrugalGPT Paper</span>
+                        <span style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">How to Use Large Language Models While Reducing Cost and Improving Performance (Stanford, 2023)</span>
+                        <span style="align-self: flex-start; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(139, 92, 246, 0.3); color: #C084FC; font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 6px;">Download PDF</span>
+                    </a>
+                    <a href="cost_efficiency.pdf" download class="sub-card" style="display: flex; flex-direction: column; text-decoration: none; transition: all 0.3s; padding: 1.5rem; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary);">
+                        <span style="font-size: 1.5rem; margin-bottom: 0.5rem;">📄</span>
+                        <span style="font-family: var(--font-outfit); font-weight: 700; font-size: 1.1rem; color: #FFF; margin-bottom: 0.25rem;">Cost Efficiency Paper</span>
+                        <span style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">Cost-efficient execution strategies of Large Language Models.</span>
+                        <span style="align-self: flex-start; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(139, 92, 246, 0.3); color: #C084FC; font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 6px;">Download PDF</span>
+                    </a>
+                    <a href="InferRoute_Project_Plan.pdf" download class="sub-card" style="display: flex; flex-direction: column; text-decoration: none; transition: all 0.3s; padding: 1.5rem; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary);">
+                        <span style="font-size: 1.5rem; margin-bottom: 0.5rem;">📄</span>
+                        <span style="font-family: var(--font-outfit); font-weight: 700; font-size: 1.1rem; color: #FFF; margin-bottom: 0.25rem;">InferRoute Project Plan</span>
+                        <span style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">Workspace details and routing design planning documents.</span>
+                        <span style="align-self: flex-start; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(139, 92, 246, 0.3); color: #C084FC; font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 6px;">Download PDF</span>
+                    </a>
+                </div>
+            </div>
         </div>
 
         <!-- Tab 2: Architecture -->
         <div id="architecture" class="tab-content">
             <div class="glass-card">
-                <h2>🏗️ InferRoute Gateway Request Lifecycle</h2>
+                <h2>🏗   InferRoute Gateway Request Lifecycle</h2>
                 <p>The sequence details how the gateway interceptor resolves client requests, manages cache, allocates concurrency slots, and executes cascades:</p>
+                
+                <div class="mermaid-box" style="background: rgba(0,0,0,0.35); padding: 1.5rem; border-radius: 12px; border: 1px solid var(--border-color); display: flex; justify-content: center; overflow-x: auto; margin-top: 1rem; margin-bottom: 2.5rem; box-shadow: inset 0 2px 8px rgba(0,0,0,0.4);">
+                    <div class="mermaid" style="width: 100%; min-width: 600px;">
+sequenceDiagram
+    autonumber
+    actor Client as Client App / SDK
+    participant GW as InferRoute Gateway
+    participant Auth as Auth & Credit Gate
+    participant Cache as Cache Layer (Redis)
+    participant Limiter as Vegas Limiter
+    participant Router as Routing Engine
+    participant Model as LLM Upstream
+    participant Audit as DB Audit & Billing
+
+    Client->>GW: POST /v1/chat/completions (Stream)
+    GW->>Auth: verify_api_key & check_balance
+    alt Balance <= $0.00
+        Auth-->>Client: 402 Payment Required
+    else Balance OK
+        Auth-->>GW: Tenant ID Resolved
+        GW->>Cache: try_acquire_dedup_lock
+        alt Cache Hit
+            Cache-->>Client: Stream Cached chunks directly
+        else Cache Miss
+            GW->>Cache: match_longest_prefix
+            Cache-->>GW: Return Cache-Affinity Weight
+            GW->>Limiter: acquire_slot
+            alt Concurrency Exceeded
+                Limiter-->>Client: 429 Too Many Requests
+            else Slot Acquired
+                GW->>Router: choose_backend (Scoring weights)
+                Router-->>GW: Selected Backend (e.g. Ollama)
+                GW->>Model: Invoke Model Stream
+                Model-->>GW: Yield Stream Chunks
+                GW->>Client: Forward Stream Chunks
+                alt Loop/Repetitive Garbage Detected
+                    GW->>Model: Cancel speculative stream
+                    GW->>Router: Trigger Fallback Cascade
+                    Router->>Model: Invoke Cloud Backend (OpenAI)
+                    Model-->>Client: Stream Cloud response
+                end
+                GW->>Limiter: release_slot
+                GW->>Audit: db_log_request & debit wallet
+            end
+        end
+    end
+                    </div>
+                </div>
                 
                 <div class="lifecycle-container">
                     <div class="lifecycle-step">
@@ -881,6 +976,21 @@
                         </tr>
                     </tbody>
                 </table>
+            <div class="glass-card">
+                <h2>📈 Trade-off Visualization Curves</h2>
+                <p>These curves show the actual measured performance frontier across swept cost levels:</p>
+                <div class="card-grid" style="margin-top: 1.5rem;">
+                    <div class="sub-card" style="text-align: center;">
+                        <h3 style="margin-bottom: 0.75rem; text-align: left;">Cost-Quality Pareto Frontier</h3>
+                        <img src="cost_quality_frontier.png" alt="Cost-Quality Frontier" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 15px rgba(0,0,0,0.3); transition: all 0.3s;" onmouseover="this.style.transform='scale(1.02)';" onmouseout="this.style.transform='scale(1)';" />
+                        <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.75rem; text-align: left;">Pareto sweeps comparing KNN, MLP, FrugalGPT Cascades, and the Zero Router baseline. Note the efficient frontier pushed to the top-left by the learned routers.</p>
+                    </div>
+                    <div class="sub-card" style="text-align: center;">
+                        <h3 style="margin-bottom: 0.75rem; text-align: left;">Latency Comparison</h3>
+                        <img src="latency_comparison.png" alt="Latency Comparison" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: 0 4px 15px rgba(0,0,0,0.3); transition: all 0.3s;" onmouseover="this.style.transform='scale(1.02)';" onmouseout="this.style.transform='scale(1)';" />
+                        <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.75rem; text-align: left;">Comparison of processing latency and time-to-first-token (TTFT) metrics across different routing scenarios.</p>
+                    </div>
+                </div>
             </div>
 
             <div class="glass-card">

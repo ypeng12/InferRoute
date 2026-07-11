@@ -8,6 +8,10 @@
   <img src="https://img.shields.io/badge/PRs-Welcome-goldenrod.svg" alt="PRs Welcome">
 </p>
 
+> [!IMPORTANT]
+> **🚀 Live Technical Hub & Interactive Cascade Simulator**: **[https://ypeng12.github.io/InferRoute/](https://ypeng12.github.io/InferRoute/)**  
+> Go here to interact with live LaTeX formula guides, request flowcharts, and play with our FrugalGPT sequential cascade simulator!
+
 ---
 
 ## 📖 Introduction
@@ -16,6 +20,10 @@
 > **InferRoute is NOT a Chatbot application.** It is an **LLM Inference Gateway** and reliability proxy layer designed to sit between client applications/AI agents and backend model engines (like local vLLM/Ollama and commercial OpenAI/Gemini APIs).
 
 Rather than statically pinning your application to a single expensive cloud endpoint, InferRoute dynamically routes prompts based on **real-time quality validation, cost constraints, latency tracking, and warm KV-cache affinity**, demonstrating up to **60%+ in API cost savings in simulated benchmark scenarios** while protecting SLAs.
+
+<p align="center">
+  <img src="docs/cost_quality_frontier.png" alt="Cost Quality Pareto Frontier Sweep" width="600" style="border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); box-shadow: 0 4px 12px rgba(0,0,0,0.15);" />
+</p>
 
 ---
 
@@ -55,7 +63,8 @@ InferRoute is designed for high-throughput, low routing overhead, and self-heali
 > For a detailed breakdown of routing algorithms, mathematical proofs, and model mapping logic, see our dedicated **[Academic Foundations Guide](docs/academic_foundations.md)**.
 
 InferRoute integrates the core routing methodologies and trade-off evaluation principles from the research paper:
-> **ROUTERBENCH: A Benchmark for Multi-LLM Routing System** (by Martian / [withmartian/routerbench](https://github.com/withmartian/routerbench)).
+> **ROUTERBENCH: A Benchmark for Multi-LLM Routing System** (by Martian / [withmartian/routerbench](https://github.com/withmartian/routerbench)).  
+> 📄 **[Download RouterBench Paper PDF](docs/A_Benchmark_for_Multi_LLM_Routing_System.pdf)**
 
 ### 1. Mathematical Scoring & Optimization
 Predictive routing is formulated as choosing a backend $m$ that maximizes the utility score for a prompt $x$:
@@ -86,7 +95,8 @@ A smart, content-aware learned router (MLP/KNN) will push the Pareto frontier to
 ## 🔄 FrugalGPT Cascading Inference (LLM Cascade)
 
 InferRoute integrates the cost-performance optimization concepts from the paper:
-> **FrugalGPT: How to Use Large Language Models While Reducing Cost and Improving Performance** (by Stanford University / arXiv:2305.05196).
+> **FrugalGPT: How to Use Large Language Models While Reducing Cost and Improving Performance** (by Stanford University / arXiv:2305.05196).  
+> 📄 **[Download FrugalGPT Paper PDF](docs/How_to_Use_Large_Language_Models.pdf)** | 📄 **[Download Cost Efficiency PDF](docs/cost_efficiency.pdf)** | 📄 **[Download InferRoute Project Plan PDF](docs/InferRoute_Project_Plan.pdf)**
 
 FrugalGPT identifies three main classes of cost-saving methods:
 1. **Prompt Adaptation**: Reduces input tokens dynamically. In InferRoute, when routing to cheap local backends (Ollama/vLLM), the **Prompt Adapter** (`prompt_adapter.py`) automatically compresses prompt sizes by pruning few-shot examples, restoring full prompts when upgrading to premium models.
