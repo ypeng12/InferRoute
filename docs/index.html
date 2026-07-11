@@ -783,21 +783,21 @@
             <!-- Research Papers Reference -->
             <div class="glass-card" style="margin-top: 2rem;">
                 <h2>📚 Original Research Papers & Reference Hub</h2>
-                <p>Read and preview the full research publications associated with this routing engine directly in your browser:</p>
+                <p>Read and preview the full research publications associated with this routing engine directly in your browser without leaving the page:</p>
                 <div class="paper-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 1.5rem;">
-                    <a href="article/A_Benchmark_for_Multi_LLM_Routing_System.pdf" target="_blank" class="sub-card" style="display: flex; flex-direction: column; text-decoration: none; transition: all 0.3s; padding: 1.5rem; background: rgba(0, 0, 0, 0.02); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary);">
+                    <a href="#" onclick="openPdfModal(event, 'article/A_Benchmark_for_Multi_LLM_Routing_System.pdf', 'RouterBench: A Benchmark for Multi-LLM Routing System')" class="sub-card" style="display: flex; flex-direction: column; text-decoration: none; transition: all 0.3s; padding: 1.5rem; background: rgba(0, 0, 0, 0.02); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary);">
                         <span style="font-size: 1.5rem; margin-bottom: 0.5rem;">📄</span>
                         <span style="font-family: var(--font-outfit); font-weight: 700; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.25rem;">RouterBench Paper</span>
                         <span style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">A Benchmark for Multi-LLM Routing System (Martian, 2024)</span>
                         <span style="align-self: flex-start; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(109, 40, 217, 0.2); color: var(--accent-violet); font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 6px;">Read / Preview PDF</span>
                     </a>
-                    <a href="article/How_to_Use_Large_Language_Models.pdf" target="_blank" class="sub-card" style="display: flex; flex-direction: column; text-decoration: none; transition: all 0.3s; padding: 1.5rem; background: rgba(0, 0, 0, 0.02); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary);">
+                    <a href="#" onclick="openPdfModal(event, 'article/How_to_Use_Large_Language_Models.pdf', 'FrugalGPT: How to Use Large Language Models While Reducing Cost')" class="sub-card" style="display: flex; flex-direction: column; text-decoration: none; transition: all 0.3s; padding: 1.5rem; background: rgba(0, 0, 0, 0.02); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary);">
                         <span style="font-size: 1.5rem; margin-bottom: 0.5rem;">📄</span>
                         <span style="font-family: var(--font-outfit); font-weight: 700; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.25rem;">FrugalGPT Paper</span>
                         <span style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">How to Use Large Language Models While Reducing Cost and Improving Performance (Stanford, 2023)</span>
                         <span style="align-self: flex-start; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(109, 40, 217, 0.2); color: var(--accent-violet); font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 6px;">Read / Preview PDF</span>
                     </a>
-                    <a href="article/cost_efficiency.pdf" target="_blank" class="sub-card" style="display: flex; flex-direction: column; text-decoration: none; transition: all 0.3s; padding: 1.5rem; background: rgba(0, 0, 0, 0.02); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary);">
+                    <a href="#" onclick="openPdfModal(event, 'article/cost_efficiency.pdf', 'Hybrid LLM: Cost-Efficient and Quality-Aware Query Routing')" class="sub-card" style="display: flex; flex-direction: column; text-decoration: none; transition: all 0.3s; padding: 1.5rem; background: rgba(0, 0, 0, 0.02); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary);">
                         <span style="font-size: 1.5rem; margin-bottom: 0.5rem;">📄</span>
                         <span style="font-family: var(--font-outfit); font-weight: 700; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.25rem;">Hybrid LLM Routing Paper</span>
                         <span style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">Hybrid LLM: Cost-Efficient and Quality-Aware Query Routing (IBM / Tsinghua, 2024)</span>
@@ -1188,6 +1188,32 @@ sequenceDiagram
             
             executeStep();
         }
+
+        // PDF Preview Modal Controls
+        function openPdfModal(event, pdfPath, paperTitle) {
+            event.preventDefault();
+            document.getElementById("pdfFrame").src = pdfPath;
+            document.getElementById("pdfModalTitle").innerText = paperTitle;
+            document.getElementById("pdfModal").style.display = "flex";
+        }
+
+        function closePdfModal() {
+            document.getElementById("pdfModal").style.display = "none";
+            document.getElementById("pdfFrame").src = "";
+        }
     </script>
+
+    <!-- PDF Viewer Modal Container -->
+    <div id="pdfModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.85); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(8px);">
+        <div style="position: relative; width: 85%; height: 90%; background: white; border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
+            <!-- Modal Header -->
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.5rem; background: #F1F5F9; border-bottom: 1px solid #E2E8F0;">
+                <h3 id="pdfModalTitle" style="font-family: var(--font-outfit); font-weight: 700; color: #0F172A; margin: 0; font-size: 1.2rem;">Paper Preview</h3>
+                <button onclick="closePdfModal()" style="background: transparent; border: none; font-size: 1.5rem; cursor: pointer; color: #64748B; font-weight: bold; transition: color 0.2s;" onmouseover="this.style.color='#EF4444'" onmouseout="this.style.color='#64748B'">✕</button>
+            </div>
+            <!-- Modal Content (Iframe) -->
+            <iframe id="pdfFrame" src="" style="width: 100%; height: 100%; border: none;"></iframe>
+        </div>
+    </div>
 </body>
 </html>
