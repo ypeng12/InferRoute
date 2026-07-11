@@ -275,6 +275,19 @@ async def get_playground():
     return HTMLResponse(content=html_content)
 
 
+@app.get("/academic", response_class=HTMLResponse, tags=["ui"])
+async def get_academic():
+    """Serves the academic technical hub page from docs/index.html."""
+    import os
+    # Read index.html from workspace docs folder
+    doc_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "docs", "index.html")
+    if not os.path.exists(doc_path):
+        raise HTTPException(status_code=404, detail="Technical documentation hub index.html not found under docs/")
+    with open(doc_path, "r", encoding="utf-8") as f:
+        html_content = f.read()
+    return HTMLResponse(content=html_content)
+
+
 @app.get("/v1/routing/metrics", tags=["ops"])
 async def routing_metrics():
     """Fetch aggregated lifetime usage and cost savings from database."""

@@ -1,39 +1,37 @@
-# ── Build stage ───────────────────────────────────────────────────────────────
-FROM python:3.12-slim AS builder
+# Build stage using official python 3.12 slim image
+FROM python:3.12-slim
 
-WORKDIR /build
-COPY requirements.txt .
-RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PORT=8080 \
+    DATABASE_URL=sqlite+aiosqlite:////app/inferroute.db \
+    MOCK_OPENAI=true \
+    MOCK_GEMINI=true \
+    MOCK_VLLM=true \
+    MOCK_OLLAMA=true
 
-# ── Runtime stage ─────────────────────────────────────────────────────────────
-FROM python:3.12-slim AS runtime
-
-# Non-root user for security
-RUN groupadd -r inferroute && useradd -r -g inferroute -d /app -s /sbin/nologin inferroute
-
+# Set working directory
 WORKDIR /app
 
-# Copy installed packages from builder
-COPY --from=builder /install /usr/local
+# Install system dependencies (optional, for potential sqlite compilation or git)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy only the application package (not edgeserve/ legacy dir)
+# Copy requirements file first for caching
+COPY requirements.txt .
+
+# Install dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy all project source code
 COPY inferroute/ ./inferroute/
+COPY docs/ ./docs/
+COPY benchmarks/ ./benchmarks/
 
-# Set ownership
-RUN chown -R inferroute:inferroute /app
-
-USER inferroute
-
-# Expose the gateway port
+# Expose default port
 EXPOSE 8080
 
-# Health check via the /healthz endpoint
-HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --retries=3 \
-    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8080/healthz')" || exit 1
-
-# Run with uvicorn
-CMD ["uvicorn", "inferroute.main:app", \
-     "--host", "0.0.0.0", \
-     "--port", "8080", \
-     "--workers", "1", \
-     "--log-level", "info"]
+# Command to run uvicorn dynamically binding to PORT environment variable (for Render/Hugging Face compatibility)
+CMD ["sh", "-c", "python -m uvicorn inferroute.main:app --host 0.0.0.0 --port ${PORT:-8080}"]
