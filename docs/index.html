@@ -807,16 +807,11 @@
                 <div>
                     <h4 style="font-family: var(--font-outfit); font-weight: 700; color: var(--accent-violet); margin-bottom: 0.25rem;">Theoretical Framework: Cost-Quality Optimization Frontier</h4>
                     <p style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.6;">
-                        The RouterBench framework models LLM selection as a multi-objective optimization problem. By defining the parameter \(\lambda\) (cost-quality trade-off coefficient), the scoring equation evaluates the economic utility of selecting a model \(m\) for a prompt \(x\). The parameter \(\lambda\) represents a user's willingness-to-pay: setting a higher \(\lambda\) prioritizes response quality, while a lower \(\lambda\) emphasizes cost savings. The Area under the cost-quality curve (AIQ) measures the cumulative routing performance across all budget constraints, serving as a unified metric for evaluating routing efficiency.
-                    </p>
-                </div>
-            </div>
-
-            <!-- Research Papers Reference -->
+                        The RouterBench framework models LLM selection as a multi-objective optimization problem. By defining the parameter \(\lambda\) (cost-quality trade-off coefficient), the scoring equation evaluates the economic utility of selecting a model \(m\) for a prompt \(x\). The parameter \(\lambda\) represents a user's willingness-to-pay: setting a higher \(\lambda\) prioritizes response quality, while a lower \(\lambda\) emphasizes cost savings. The Area under the cost-quality curve (AIQ) measures the cumulative routing performance across all budget con            <!-- Research Papers Reference -->
             <div class="glass-card" style="margin-top: 2rem;">
                 <h2>📚 Original Research Papers & Reference Hub</h2>
                 <p>Read and preview the full research publications associated with this routing engine directly in your browser:</p>
-                <div class="paper-grid" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 1.5rem;">
+                <div class="paper-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin-top: 1.5rem;">
                     <a href="article/A_Benchmark_for_Multi_LLM_Routing_System.pdf" target="_blank" class="sub-card" style="display: flex; flex-direction: column; text-decoration: none; transition: all 0.3s; padding: 1.5rem; background: rgba(0, 0, 0, 0.02); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary);">
                         <span style="font-size: 1.5rem; margin-bottom: 0.5rem;">📄</span>
                         <span style="font-family: var(--font-outfit); font-weight: 700; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.25rem;">RouterBench Paper</span>
@@ -833,6 +828,42 @@
                         <span style="font-size: 1.5rem; margin-bottom: 0.5rem;">📄</span>
                         <span style="font-family: var(--font-outfit); font-weight: 700; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.25rem;">Hybrid LLM Routing Paper</span>
                         <span style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">Hybrid LLM: Cost-Efficient and Quality-Aware Query Routing (IBM / Tsinghua, 2024)</span>
+                        <span style="align-self: flex-start; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(109, 40, 217, 0.2); color: var(--accent-violet); font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 6px;">Read / Preview PDF</span>
+                    </a>
+                    <a href="article/RouteLLM_Preference_Data.pdf" target="_blank" class="sub-card" style="display: flex; flex-direction: column; text-decoration: none; transition: all 0.3s; padding: 1.5rem; background: rgba(0, 0, 0, 0.02); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary);">
+                        <span style="font-size: 1.5rem; margin-bottom: 0.5rem;">📄</span>
+                        <span style="font-family: var(--font-outfit); font-weight: 700; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.25rem;">RouteLLM Paper</span>
+                        <span style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">Learning to Route LLMs with Preference Data (LMSYS / Berkeley, ICLR 2025)</span>
+                        <span style="align-self: flex-start; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(109, 40, 217, 0.2); color: var(--accent-violet); font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 6px;">Read / Preview PDF</span>
+                    </a>
+                    <a href="article/When_Routing_Collapses.pdf" target="_blank" class="sub-card" style="display: flex; flex-direction: column; text-decoration: none; transition: all 0.3s; padding: 1.5rem; background: rgba(0, 0, 0, 0.02); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary);">
+                        <span style="font-size: 1.5rem; margin-bottom: 0.5rem;">📄</span>
+                        <span style="font-family: var(--font-outfit); font-weight: 700; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.25rem;">EquiRouter Paper</span>
+                        <span style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">When Routing Collapses: On Degenerate Convergence (Lai & Ye, 2026)</span>
+                        <span style="align-self: flex-start; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(109, 40, 217, 0.2); color: var(--accent-violet); font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 6px;">Read / Preview PDF</span>
+                    </a>
+                    <a href="article/R2_Router_Reasoning.pdf" target="_blank" class="sub-card" style="display: flex; flex-direction: column; text-decoration: none; transition: all 0.3s; padding: 1.5rem; background: rgba(0, 0, 0, 0.02); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary);">
+                        <span style="font-size: 1.5rem; margin-bottom: 0.5rem;">📄</span>
+                        <span style="font-family: var(--font-outfit); font-weight: 700; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.25rem;">R2-Router Paper</span>
+                        <span style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">R2-Router: A New Paradigm for LLM Routing with Reasoning (ICML 2026)</span>
+                        <span style="align-self: flex-start; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(109, 40, 217, 0.2); color: var(--accent-violet); font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 6px;">Read / Preview PDF</span>
+                    </a>
+                    <a href="article/Router_R1_Multi_Round.pdf" target="_blank" class="sub-card" style="display: flex; flex-direction: column; text-decoration: none; transition: all 0.3s; padding: 1.5rem; background: rgba(0, 0, 0, 0.02); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary);">
+                        <span style="font-size: 1.5rem; margin-bottom: 0.5rem;">📄</span>
+                        <span style="font-family: var(--font-outfit); font-weight: 700; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.25rem;">Router-R1 Paper</span>
+                        <span style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">Multi-Round Routing and Aggregation via Reinforcement Learning (2025)</span>
+                        <span style="align-self: flex-start; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(109, 40, 217, 0.2); color: var(--accent-violet); font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 6px;">Read / Preview PDF</span>
+                    </a>
+                    <a href="article/LLMRouterBench_Massive.pdf" target="_blank" class="sub-card" style="display: flex; flex-direction: column; text-decoration: none; transition: all 0.3s; padding: 1.5rem; background: rgba(0, 0, 0, 0.02); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary);">
+                        <span style="font-size: 1.5rem; margin-bottom: 0.5rem;">📄</span>
+                        <span style="font-family: var(--font-outfit); font-weight: 700; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.25rem;">LLMRouterBench Paper</span>
+                        <span style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">A Massive Benchmark and Unified Framework for LLM Routing (2026)</span>
+                        <span style="align-self: flex-start; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(109, 40, 217, 0.2); color: var(--accent-violet); font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 6px;">Read / Preview PDF</span>
+                    </a>
+                    <a href="article/Survey_Routing_Resource_Optimisation.pdf" target="_blank" class="sub-card" style="display: flex; flex-direction: column; text-decoration: none; transition: all 0.3s; padding: 1.5rem; background: rgba(0, 0, 0, 0.02); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary);">
+                        <span style="font-size: 1.5rem; margin-bottom: 0.5rem;">📄</span>
+                        <span style="font-family: var(--font-outfit); font-weight: 700; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.25rem;">Routing Survey Paper</span>
+                        <span style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">A Survey on Routing Strategies for Resource Optimisation (2025)</span>
                         <span style="align-self: flex-start; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(109, 40, 217, 0.2); color: var(--accent-violet); font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 6px;">Read / Preview PDF</span>
                     </a>
                 </div>
@@ -893,9 +924,102 @@
                         </details>
                     </div>
 
+                    <div class="sub-card" style="background: rgba(0,0,0,0.01);">
+                        <h4 style="font-family: var(--font-outfit); font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem;">4. RouteLLM (LMSYS / UC Berkeley)</h4>
+                        <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.75rem; font-style: italic;">
+                            Ong, I., Almahairi, A., Wu, V., Chiang, W. L., Wu, T., Gonzalez, J. E., Kadous, M. W., & Stoica, I. (2025). RouteLLM: Learning to Route LLMs with Preference Data. <em>Proceedings of the Thirteenth International Conference on Learning Representations (ICLR)</em>.
+                        </p>
+                        <details style="cursor: pointer; font-size: 0.85rem;">
+                            <summary style="color: var(--accent-violet); font-weight: 600; outline: none; margin-bottom: 0.5rem;">Show BibTeX Citation</summary>
+                            <pre style="background: rgba(0,0,0,0.03); padding: 0.75rem; border-radius: 6px; border: 1px solid var(--border-color); overflow-x: auto; font-family: monospace; color: var(--text-secondary);">@inproceedings{ong2025routellm,
+  title={RouteLLM: Learning to Route LLMs with Preference Data},
+  author={Ong, Isaac and Almahairi, Amjad and Wu, Vincent and Chiang, Wei-Lin and Wu, Tianhao and Gonzalez, Joseph E. and Kadous, M. Waleed and Stoica, Ion},
+  booktitle={The Thirteenth International Conference on Learning Representations},
+  year={2025}
+}</pre>
+                        </details>
+                    </div>
+
+                    <div class="sub-card" style="background: rgba(0,0,0,0.01);">
+                        <h4 style="font-family: var(--font-outfit); font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem;">5. EquiRouter (Routing Collapse Mitigation)</h4>
+                        <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.75rem; font-style: italic;">
+                            Lai, G., & Ye, H. J. (2026). When Routing Collapses: On the Degenerate Convergence of LLM Routers. <em>arXiv preprint arXiv:2602.03478</em>.
+                        </p>
+                        <details style="cursor: pointer; font-size: 0.85rem;">
+                            <summary style="color: var(--accent-violet); font-weight: 600; outline: none; margin-bottom: 0.5rem;">Show BibTeX Citation</summary>
+                            <pre style="background: rgba(0,0,0,0.03); padding: 0.75rem; border-radius: 6px; border: 1px solid var(--border-color); overflow-x: auto; font-family: monospace; color: var(--text-secondary);">@article{lai2026when,
+  title={When Routing Collapses: On the Degenerate Convergence of LLM Routers},
+  author={Lai, Guannan and Ye, Han-Jia},
+  journal={arXiv preprint arXiv:2602.03478},
+  year={2026}
+}</pre>
+                        </details>
+                    </div>
+
+                    <div class="sub-card" style="background: rgba(0,0,0,0.01);">
+                        <h4 style="font-family: var(--font-outfit); font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem;">6. R2-Router (Output-Length-Constrained Routing)</h4>
+                        <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.75rem; font-style: italic;">
+                            Anonymous (2026). R2-Router: A New Paradigm for LLM Routing with Reasoning. <em>arXiv preprint arXiv:2602.02823</em>.
+                        </p>
+                        <details style="cursor: pointer; font-size: 0.85rem;">
+                            <summary style="color: var(--accent-violet); font-weight: 600; outline: none; margin-bottom: 0.5rem;">Show BibTeX Citation</summary>
+                            <pre style="background: rgba(0,0,0,0.03); padding: 0.75rem; border-radius: 6px; border: 1px solid var(--border-color); overflow-x: auto; font-family: monospace; color: var(--text-secondary);">@article{r2router2026,
+  title={R2-Router: A New Paradigm for LLM Routing with Reasoning},
+  journal={arXiv preprint arXiv:2602.02823},
+  year={2026}
+}</pre>
+                        </details>
+                    </div>
+
+                    <div class="sub-card" style="background: rgba(0,0,0,0.01);">
+                        <h4 style="font-family: var(--font-outfit); font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem;">7. Router-R1 (Reinforcement Learned Multi-Round Router)</h4>
+                        <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.75rem; font-style: italic;">
+                            Anonymous (2025). Router-R1: Teaching LLMs Multi-Round Routing and Aggregation via Reinforcement Learning. <em>arXiv preprint arXiv:2506.09033</em>.
+                        </p>
+                        <details style="cursor: pointer; font-size: 0.85rem;">
+                            <summary style="color: var(--accent-violet); font-weight: 600; outline: none; margin-bottom: 0.5rem;">Show BibTeX Citation</summary>
+                            <pre style="background: rgba(0,0,0,0.03); padding: 0.75rem; border-radius: 6px; border: 1px solid var(--border-color); overflow-x: auto; font-family: monospace; color: var(--text-secondary);">@article{routerr12025,
+  title={Router-R1: Teaching LLMs Multi-Round Routing and Aggregation via Reinforcement Learning},
+  journal={arXiv preprint arXiv:2506.09033},
+  year={2025}
+}</pre>
+                        </details>
+                    </div>
+
+                    <div class="sub-card" style="background: rgba(0,0,0,0.01);">
+                        <h4 style="font-family: var(--font-outfit); font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem;">8. LLMRouterBench (Large-Scale Benchmarking Framework)</h4>
+                        <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.75rem; font-style: italic;">
+                            Anonymous (2026). LLMRouterBench: A Massive Benchmark and Unified Framework for LLM Routing. <em>arXiv preprint arXiv:2601.07206</em>.
+                        </p>
+                        <details style="cursor: pointer; font-size: 0.85rem;">
+                            <summary style="color: var(--accent-violet); font-weight: 600; outline: none; margin-bottom: 0.5rem;">Show BibTeX Citation</summary>
+                            <pre style="background: rgba(0,0,0,0.03); padding: 0.75rem; border-radius: 6px; border: 1px solid var(--border-color); overflow-x: auto; font-family: monospace; color: var(--text-secondary);">@article{llmrouterbench2026,
+  title={LLMRouterBench: A Massive Benchmark and Unified Framework for LLM Routing},
+  journal={arXiv preprint arXiv:2601.07206},
+  year={2026}
+}</pre>
+                        </details>
+                    </div>
+
+                    <div class="sub-card" style="background: rgba(0,0,0,0.01);">
+                        <h4 style="font-family: var(--font-outfit); font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem;">9. Resource-Optimized LLM Routing Survey</h4>
+                        <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.75rem; font-style: italic;">
+                            Anonymous (2025). Doing More with Less: A Survey on Routing Strategies for Resource Optimisation in Large Language Model-Based Systems. <em>arXiv preprint arXiv:2502.00409</em>.
+                        </p>
+                        <details style="cursor: pointer; font-size: 0.85rem;">
+                            <summary style="color: var(--accent-violet); font-weight: 600; outline: none; margin-bottom: 0.5rem;">Show BibTeX Citation</summary>
+                            <pre style="background: rgba(0,0,0,0.03); padding: 0.75rem; border-radius: 6px; border: 1px solid var(--border-color); overflow-x: auto; font-family: monospace; color: var(--text-secondary);">@article{resource_routing_survey_2025,
+  title={Doing More with Less: A Survey on Routing Strategies for Resource Optimisation in Large Language Model-Based Systems},
+  journal={arXiv preprint arXiv:2502.00409},
+  year={2025}
+}</pre>
+                        </details>
+                    </div>
+
                 </div>
             </div>
         </div>
+
 
         <!-- Tab 2: Architecture -->
         <div id="architecture" class="tab-content">
