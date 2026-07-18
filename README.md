@@ -120,7 +120,9 @@ To prevent leaking low-quality responses to clients during streaming requests, t
 
 ## 📊 Reproducible Evaluation Harness
 
-InferRoute includes a standardized pipeline to test and compare multiple routing strategies under realistic workloads, sweeping ratios and lambdas to trace Pareto frontiers:
+InferRoute includes a standardized pipeline to test and compare multiple routing strategies under realistic workloads, sweeping ratios and lambdas to trace Pareto frontiers. Our benchmarks demonstrate a **56% cost reduction** (using KNN/MLP routers) compared to always calling OpenAI, while matching its baseline output quality.
+
+Read the detailed cost-quality comparison report: **[Router Evaluation Summary Report (docs/evaluation_summary.md)](docs/evaluation_summary.md)**.
 
 ```bash
 # 1. Run the evaluation orchestrator (sweeps Zero Router p-ratios and KNN/MLP lambda values)
@@ -129,7 +131,7 @@ python benchmarks/run_router_eval.py
 # 2. Compile stats, compute AIQ values, and generate visual Pareto curves
 python benchmarks/plot_results.py
 ```
-This runs the dataset prompts across all scenarios and sweeps, and outputs cost, quality, latencies, SLO compliance, and AIQ comparisons to `benchmarks/results/`.
+This runs the dataset prompts across all scenarios and sweeps, and outputs cost, quality, latencies, SLO compliance, and AIQ comparisons to the public summary report and plots.
 
 ---
 
