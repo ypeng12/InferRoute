@@ -572,6 +572,59 @@
             margin-top: 1rem;
         }
 
+        /* ── Paper summary details ── */
+        details.paper-summary-details {
+            margin-top: 1rem;
+            padding-top: 0.75rem;
+            border-top: 1px dashed var(--border-color);
+        }
+        details.paper-summary-details summary {
+            font-family: var(--font-outfit);
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--accent-violet);
+            cursor: pointer;
+            outline: none;
+            user-select: none;
+        }
+        details.paper-summary-details[open] summary {
+            margin-bottom: 0.75rem;
+        }
+        .paper-summary-content {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+        .paper-summary-content h5 {
+            font-family: var(--font-outfit);
+            color: var(--text-primary);
+            margin-top: 0.85rem;
+            margin-bottom: 0.35rem;
+            font-size: 0.9rem;
+            font-weight: 700;
+        }
+        .paper-summary-content p {
+            margin-bottom: 0.5rem;
+        }
+        .paper-summary-content code {
+            background: rgba(0,0,0,0.03);
+            padding: 0.1rem 0.3rem;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 0.8rem;
+            color: var(--accent-violet);
+        }
+        .paper-summary-content pre {
+            background: rgba(0,0,0,0.03);
+            padding: 0.5rem;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.8rem;
+            overflow-x: auto;
+            margin: 0.5rem 0;
+            border: 1px solid var(--border-color);
+        }
+
         /* ── PDF / Print Styles ── */
         @media print {
             body {
@@ -818,61 +871,205 @@
             <div class="glass-card" style="margin-top: 2rem;">
                 <h2>📚 Original Research Papers & Reference Hub</h2>
                 <p>Read and preview the full research publications associated with this routing engine directly in your browser:</p>
-                <div class="paper-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; margin-top: 1.5rem;">
-                    <a href="article/A_Benchmark_for_Multi_LLM_Routing_System.pdf" target="_blank" class="sub-card" style="display: flex; flex-direction: column; text-decoration: none; transition: all 0.3s; padding: 1.5rem; background: rgba(0, 0, 0, 0.02); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary);">
-                        <span style="font-size: 1.5rem; margin-bottom: 0.5rem;">📄</span>
-                        <span style="font-family: var(--font-outfit); font-weight: 700; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.25rem;">RouterBench Paper</span>
-                        <span style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">A Benchmark for Multi-LLM Routing System (Martian, 2024)</span>
-                        <span style="align-self: flex-start; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(109, 40, 217, 0.2); color: var(--accent-violet); font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 6px;">Read / Preview PDF</span>
-                    </a>
-                    <a href="article/How_to_Use_Large_Language_Models.pdf" target="_blank" class="sub-card" style="display: flex; flex-direction: column; text-decoration: none; transition: all 0.3s; padding: 1.5rem; background: rgba(0, 0, 0, 0.02); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary);">
+                <div class="paper-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
+                    
+                    <!-- Paper 1 -->
+                    <div class="sub-card" style="display: flex; flex-direction: column; padding: 1.5rem; background: rgba(0, 0, 0, 0.02); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary);">
                         <span style="font-size: 1.5rem; margin-bottom: 0.5rem;">📄</span>
                         <span style="font-family: var(--font-outfit); font-weight: 700; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.25rem;">FrugalGPT Paper</span>
                         <span style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">How to Use Large Language Models While Reducing Cost and Improving Performance (Stanford, 2023)</span>
-                        <span style="align-self: flex-start; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(109, 40, 217, 0.2); color: var(--accent-violet); font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 6px;">Read / Preview PDF</span>
-                    </a>
-                    <a href="article/cost_efficiency.pdf" target="_blank" class="sub-card" style="display: flex; flex-direction: column; text-decoration: none; transition: all 0.3s; padding: 1.5rem; background: rgba(0, 0, 0, 0.02); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary);">
+                        <a href="article/How_to_Use_Large_Language_Models.pdf" target="_blank" style="align-self: flex-start; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(109, 40, 217, 0.2); color: var(--accent-violet); font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 6px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.25rem; margin-bottom: 0.75rem;">Read / Preview PDF</a>
+                        
+                        <details class="paper-summary-details">
+                            <summary>查看学术综述 (Paper Summary)</summary>
+                            <div class="paper-summary-content">
+                                <h5>🔍 研究背景</h5>
+                                <p>商业大模型单次调用费用昂贵，而开源/小尺寸模型（如 Llama、GPT-3.5）极其便宜但准确率参差不齐。本论文提出通过调度低成本模型并搭配判定机制，以在保留高准确率的同时大幅削减总费用。</p>
+                                <h5>📐 数学建模与公式</h5>
+                                <p><strong>级联模型 (Cascade Decision):</strong> 设定模型序列 \((M_1, M_2, \dots, M_k)\) 以及质量评估器 \(J: \text{Response} \to [0, 1]\)。</p>
+                                <p>对于请求 \(x\)，系统依次生成 \(y_i = M_i(x)\)，若 \(J(y_i) \ge \tau\)（接受度阈值），则立刻终止级联返回，否则 escalation 到下一级。</p>
+                                <h5>📊 实验结论</h5>
+                                <p>相比直接调用 GPT-4，FrugalGPT 可降低高达 90% 的总账单，并指出小模型无法有效吸收冗长上下文，提示词裁剪至关重要。</p>
+                                <h5>⚙️ Codebase 集成落地</h5>
+                                <p>级联选路运行在 <a href="file:///c:/Users/pengy/OneDrive/Desktop/InferRoute/inferroute/main.py">main.py</a> 的级联流中，裁剪在 <a href="file:///c:/Users/pengy/OneDrive/Desktop/InferRoute/inferroute/prompt_adapter.py">prompt_adapter.py</a>，评分判定运行在 <a href="file:///c:/Users/pengy/OneDrive/Desktop/InferRoute/inferroute/validator.py">validator.py</a>。</p>
+                            </div>
+                        </details>
+                    </div>
+
+                    <!-- Paper 2 -->
+                    <div class="sub-card" style="display: flex; flex-direction: column; padding: 1.5rem; background: rgba(0, 0, 0, 0.02); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary);">
+                        <span style="font-size: 1.5rem; margin-bottom: 0.5rem;">📄</span>
+                        <span style="font-family: var(--font-outfit); font-weight: 700; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.25rem;">RouterBench Paper</span>
+                        <span style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">A Benchmark for Multi-LLM Routing System (Martian, 2024)</span>
+                        <a href="article/A_Benchmark_for_Multi_LLM_Routing_System.pdf" target="_blank" style="align-self: flex-start; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(109, 40, 217, 0.2); color: var(--accent-violet); font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 6px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.25rem; margin-bottom: 0.75rem;">Read / Preview PDF</a>
+                        
+                        <details class="paper-summary-details">
+                            <summary>查看学术综述 (Paper Summary)</summary>
+                            <div class="paper-summary-content">
+                                <h5>🔍 研究背景</h5>
+                                <p>大模型路由逐步多样化，但缺乏标准化的评估基准和数学框架来对比不同路由器在性价比上的优劣。</p>
+                                <h5>📐 数学建模与公式</h5>
+                                <p><strong>效用评分公式:</strong> \(S(m, x) = \lambda \cdot Q_{\text{pred}}(m, x) - C(m)\)，其中 \(\lambda\) 代表用户的支付意愿系数，\(Q\) 代表模型的质量预测，\(C\) 代表计费成本。</p>
+                                <p><strong>AIQ 曲线下面积积分:</strong> \(\text{AIQ} = \int_{c_{\min}}^{c_{\max}} Q(c) \, dc\)，衡量在各种预算曲线下的全局选路表现。</p>
+                                <h5>📊 实验结论</h5>
+                                <p>引入预测型 MLP 路由器相比静态概率分配（Zero Router）可提升整体 AIQ 达 15% 以上。Oracle 决策上限揭示了路由组合的潜能。</p>
+                                <h5>⚙️ Codebase 集成落地</h5>
+                                <p>效用评分与路由在 <a href="file:///c:/Users/pengy/OneDrive/Desktop/InferRoute/inferroute/router.py">router.py</a> 中的 KNN/MLP 选路策略中运行，帕累托分析和 AIQ 计算在 <a href="file:///c:/Users/pengy/OneDrive/Desktop/InferRoute/benchmarks/plot_results.py">plot_results.py</a>。</p>
+                            </div>
+                        </details>
+                    </div>
+
+                    <!-- Paper 3 -->
+                    <div class="sub-card" style="display: flex; flex-direction: column; padding: 1.5rem; background: rgba(0, 0, 0, 0.02); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary);">
                         <span style="font-size: 1.5rem; margin-bottom: 0.5rem;">📄</span>
                         <span style="font-family: var(--font-outfit); font-weight: 700; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.25rem;">Hybrid LLM Routing Paper</span>
                         <span style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">Hybrid LLM: Cost-Efficient and Quality-Aware Query Routing (IBM / Tsinghua, 2024)</span>
-                        <span style="align-self: flex-start; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(109, 40, 217, 0.2); color: var(--accent-violet); font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 6px;">Read / Preview PDF</span>
-                    </a>
-                    <a href="article/RouteLLM_Preference_Data.pdf" target="_blank" class="sub-card" style="display: flex; flex-direction: column; text-decoration: none; transition: all 0.3s; padding: 1.5rem; background: rgba(0, 0, 0, 0.02); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary);">
+                        <a href="article/cost_efficiency.pdf" target="_blank" style="align-self: flex-start; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(109, 40, 217, 0.2); color: var(--accent-violet); font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 6px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.25rem; margin-bottom: 0.75rem;">Read / Preview PDF</a>
+                        
+                        <details class="paper-summary-details">
+                            <summary>查看学术综述 (Paper Summary)</summary>
+                            <div class="paper-summary-content">
+                                <h5>🔍 研究背景</h5>
+                                <p>解决企业在拥有高并发免费本地小模型群（Edge）与计费的云端强模型（Cloud）时，如何实现高可用混合选路，减少多级判定带来的 TTFT 耗时。</p>
+                                <h5>📐 数学建模与公式</h5>
+                                <p><strong>难度分类器 (Difficulty Estimator):</strong> \(D(x) = \text{Classifier}(x) \in \{0, 1\}\)，直接判定请求难易度并直达目标模型，强调一击即中。</p>
+                                <h5>📊 实验结论</h5>
+                                <p>中等体量分类器能以 85% 以上精度区分复杂度。能够降低多达 40% 的平均网络往返延迟，节约超 60% 费用。</p>
+                                <h5>⚙️ Codebase 集成落地</h5>
+                                <p>在 <a href="file:///c:/Users/pengy/OneDrive/Desktop/InferRoute/inferroute/learned_router.py">learned_router.py</a> 中实现了提取 prompt 任务特质（数学、代码等）的特征估计和直达策略分流。</p>
+                            </div>
+                        </details>
+                    </div>
+
+                    <!-- Paper 4 -->
+                    <div class="sub-card" style="display: flex; flex-direction: column; padding: 1.5rem; background: rgba(0, 0, 0, 0.02); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary);">
                         <span style="font-size: 1.5rem; margin-bottom: 0.5rem;">📄</span>
                         <span style="font-family: var(--font-outfit); font-weight: 700; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.25rem;">RouteLLM Paper</span>
                         <span style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">Learning to Route LLMs with Preference Data (LMSYS / Berkeley, ICLR 2025)</span>
-                        <span style="align-self: flex-start; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(109, 40, 217, 0.2); color: var(--accent-violet); font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 6px;">Read / Preview PDF</span>
-                    </a>
-                    <a href="article/When_Routing_Collapses.pdf" target="_blank" class="sub-card" style="display: flex; flex-direction: column; text-decoration: none; transition: all 0.3s; padding: 1.5rem; background: rgba(0, 0, 0, 0.02); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary);">
+                        <a href="article/RouteLLM_Preference_Data.pdf" target="_blank" style="align-self: flex-start; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(109, 40, 217, 0.2); color: var(--accent-violet); font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 6px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.25rem; margin-bottom: 0.75rem;">Read / Preview PDF</a>
+                        
+                        <details class="paper-summary-details">
+                            <summary>查看学术综述 (Paper Summary)</summary>
+                            <div class="paper-summary-content">
+                                <h5>🔍 研究背景</h5>
+                                <p>针对写作、创意、日常对话等缺乏唯一标准解的任务，探讨如何利用大模型竞技场（Chatbot Arena）产生的人类真实偏好对战数据训练二分类器。</p>
+                                <h5>📐 数学建模与公式</h5>
+                                <p><strong>偏好对战概率 (Bradley-Terry Extension):</strong> \(P(M_{\text{strong}} \succ M_{\text{cheap}} \mid x) = \sigma(f(x))\)，通过交叉熵损失优化预测。概率大于阈值 \(\theta\) 时上报强模型，否则分流至便宜模型。</p>
+                                <h5>📊 实验结论</h5>
+                                <p>在 Arena 上能在维持 GPT-4 95% 满意度的同时，缩减 50% API 费用，并验证了轻量级分类网络的优越性。</p>
+                                <h5>⚙️ Codebase 集成落地</h5>
+                                <p>概率选路决策与阈值判定借鉴了该设计（<a href="file:///c:/Users/pengy/OneDrive/Desktop/InferRoute/inferroute/router.py">router.py</a>），拟在后续工作中引入专门的偏好二分类预测器 `preference_router.py`。</p>
+                            </div>
+                        </details>
+                    </div>
+
+                    <!-- Paper 5 -->
+                    <div class="sub-card" style="display: flex; flex-direction: column; padding: 1.5rem; background: rgba(0, 0, 0, 0.02); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary);">
                         <span style="font-size: 1.5rem; margin-bottom: 0.5rem;">📄</span>
                         <span style="font-family: var(--font-outfit); font-weight: 700; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.25rem;">EquiRouter Paper</span>
                         <span style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">When Routing Collapses: On Degenerate Convergence (Lai & Ye, 2026)</span>
-                        <span style="align-self: flex-start; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(109, 40, 217, 0.2); color: var(--accent-violet); font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 6px;">Read / Preview PDF</span>
-                    </a>
-                    <a href="article/R2_Router_Reasoning.pdf" target="_blank" class="sub-card" style="display: flex; flex-direction: column; text-decoration: none; transition: all 0.3s; padding: 1.5rem; background: rgba(0, 0, 0, 0.02); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary);">
+                        <a href="article/When_Routing_Collapses.pdf" target="_blank" style="align-self: flex-start; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(109, 40, 217, 0.2); color: var(--accent-violet); font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 6px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.25rem; margin-bottom: 0.75rem;">Read / Preview PDF</a>
+                        
+                        <details class="paper-summary-details">
+                            <summary>查看学术综述 (Paper Summary)</summary>
+                            <div class="paper-summary-content">
+                                <h5>🔍 研究背景</h5>
+                                <p>指出当存在 3 个以上候选模型池时，传统的 MSE 回归训练机制会导致在高预算（大 \(\lambda\)）时决策权坍缩，强制全选最昂贵模型。</p>
+                                <h5>📐 数学建模与公式</h5>
+                                <p><strong>决策感知排序损失 (Decision-Aware Ranking Loss):</strong></p>
+                                <p>\(\mathcal{L}_{\text{rank}} = -\sum_{i \ne j} \log \sigma \Big( \big(\text{Utility}(M_i, x) - \text{Utility}(M_j, x)\big) \cdot \mathbb{I}(M_i \succ M_j) \Big)\)，强调学习两模型效用之差，维持边界决策概率。</p>
+                                <h5>📊 实验结论</h5>
+                                <p>EquiRouter 成功解决回归多分类塌陷问题，在同等质量下，高预算区间多降低 17% 开销。</p>
+                                <h5>⚙️ Codebase 集成落地</h5>
+                                <p>网关对效用归一化进行了放塌陷微调。未来将在 `benchmarks/train_router.py` 中直接换用此排名损失函数进行优化。</p>
+                            </div>
+                        </details>
+                    </div>
+
+                    <!-- Paper 6 -->
+                    <div class="sub-card" style="display: flex; flex-direction: column; padding: 1.5rem; background: rgba(0, 0, 0, 0.02); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary);">
                         <span style="font-size: 1.5rem; margin-bottom: 0.5rem;">📄</span>
                         <span style="font-family: var(--font-outfit); font-weight: 700; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.25rem;">R2-Router Paper</span>
                         <span style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">R2-Router: A New Paradigm for LLM Routing with Reasoning (ICML 2026)</span>
-                        <span style="align-self: flex-start; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(109, 40, 217, 0.2); color: var(--accent-violet); font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 6px;">Read / Preview PDF</span>
-                    </a>
-                    <a href="article/Router_R1_Multi_Round.pdf" target="_blank" class="sub-card" style="display: flex; flex-direction: column; text-decoration: none; transition: all 0.3s; padding: 1.5rem; background: rgba(0, 0, 0, 0.02); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary);">
+                        <a href="article/R2_Router_Reasoning.pdf" target="_blank" style="align-self: flex-start; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(109, 40, 217, 0.2); color: var(--accent-violet); font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 6px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.25rem; margin-bottom: 0.75rem;">Read / Preview PDF</a>
+                        
+                        <details class="paper-summary-details">
+                            <summary>查看学术综述 (Paper Summary)</summary>
+                            <div class="paper-summary-content">
+                                <h5>🔍 研究背景</h5>
+                                <p>大模型调用费用大多由生成字数决定。若不设防生成字数，大模型输出的冗长答复会极大地蚕食路由的成本红利。</p>
+                                <h5>📐 数学建模与公式</h5>
+                                <p><strong>联合寻优公式:</strong> \(\max_{m, L} \left[ \text{Quality}(m, x, L) - \lambda \cdot \text{Cost}(m, L) \right]\)，其中 \(L\) 代表限制最大输出 token 字数。</p>
+                                <h5>📊 实验结论</h5>
+                                <p>常识问答和提取任务在缩短字数后质量维持原样，这为输出开销带来了 4-5 倍的缩减，显著加快了端到端流式接收。</p>
+                                <h5>⚙️ Codebase 集成落地</h5>
+                                <p>在 <a href="file:///c:/Users/pengy/OneDrive/Desktop/InferRoute/inferroute/prompt_adapter.py">prompt_adapter.py</a> 中实现了动态提示词注入与长度自适应，根据模型档次调整 payload `max_tokens` 参数。</p>
+                            </div>
+                        </details>
+                    </div>
+
+                    <!-- Paper 7 -->
+                    <div class="sub-card" style="display: flex; flex-direction: column; padding: 1.5rem; background: rgba(0, 0, 0, 0.02); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary);">
                         <span style="font-size: 1.5rem; margin-bottom: 0.5rem;">📄</span>
                         <span style="font-family: var(--font-outfit); font-weight: 700; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.25rem;">Router-R1 Paper</span>
                         <span style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">Multi-Round Routing and Aggregation via Reinforcement Learning (2025)</span>
-                        <span style="align-self: flex-start; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(109, 40, 217, 0.2); color: var(--accent-violet); font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 6px;">Read / Preview PDF</span>
-                    </a>
-                    <a href="article/LLMRouterBench_Massive.pdf" target="_blank" class="sub-card" style="display: flex; flex-direction: column; text-decoration: none; transition: all 0.3s; padding: 1.5rem; background: rgba(0, 0, 0, 0.02); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary);">
+                        <a href="article/Router_R1_Multi_Round.pdf" target="_blank" style="align-self: flex-start; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(109, 40, 217, 0.2); color: var(--accent-violet); font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 6px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.25rem; margin-bottom: 0.75rem;">Read / Preview PDF</a>
+                        
+                        <details class="paper-summary-details">
+                            <summary>查看学术综述 (Paper Summary)</summary>
+                            <div class="paper-summary-content">
+                                <h5>🔍 研究背景</h5>
+                                <p>单次单轮分类分流遇到超复杂的多步推理或代码排错任务基本失灵。复杂任务需要多轮拆解、反复求证与多次升级路由。</p>
+                                <h5>📐 数学建模与公式</h5>
+                                <p><strong>RL 奖励机制:</strong> \(\mathcal{R} = \mathcal{R}_{\text{accuracy}}(y) + \mathcal{R}_{\text{format}}(\text{think\_blocks}) - \beta \cdot \text{Cost}_{\text{inference}}\)，用强化学习调教 local 选路 agent。Agent 生成带有 `&lt;think&gt;` 思维链的逻辑步骤，拆分调度子请求并汇总。</p>
+                                <h5>📊 实验结论</h5>
+                                <p>训练过的 8B 代理学会了在思考链中调度预算，仅耗费 GPT-4 35% 的成本就达到了等同程度的数学解答水准。</p>
+                                <h5>⚙️ Codebase 集成落地</h5>
+                                <p>对应了网关在 <a href="file:///c:/Users/pengy/OneDrive/Desktop/InferRoute/inferroute/main.py">main.py</a> 级联检验模块中配置的失败回退重试与条件流阻断。</p>
+                            </div>
+                        </details>
+                    </div>
+
+                    <!-- Paper 8 -->
+                    <div class="sub-card" style="display: flex; flex-direction: column; padding: 1.5rem; background: rgba(0, 0, 0, 0.02); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary);">
                         <span style="font-size: 1.5rem; margin-bottom: 0.5rem;">📄</span>
                         <span style="font-family: var(--font-outfit); font-weight: 700; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.25rem;">LLMRouterBench Paper</span>
                         <span style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">A Massive Benchmark and Unified Framework for LLM Routing (2026)</span>
-                        <span style="align-self: flex-start; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(109, 40, 217, 0.2); color: var(--accent-violet); font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 6px;">Read / Preview PDF</span>
-                    </a>
-                    <a href="article/Survey_Routing_Resource_Optimisation.pdf" target="_blank" class="sub-card" style="display: flex; flex-direction: column; text-decoration: none; transition: all 0.3s; padding: 1.5rem; background: rgba(0, 0, 0, 0.02); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary);">
+                        <a href="article/LLMRouterBench_Massive.pdf" target="_blank" style="align-self: flex-start; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(109, 40, 217, 0.2); color: var(--accent-violet); font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 6px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.25rem; margin-bottom: 0.75rem;">Read / Preview PDF</a>
+                        
+                        <details class="paper-summary-details">
+                            <summary>查看学术综述 (Paper Summary)</summary>
+                            <div class="paper-summary-content">
+                                <h5>🔍 研究背景</h5>
+                                <p>解决路由领域实验设计混乱、微调偏好漂移等数据漂移（Data Drift）带来的评测不稳定性，亟需大规模科学对照评测基准。</p>
+                                <h5>📊 实验结论</h5>
+                                <p>构建了 400K 级多任务标准测试集，证实路由存在 Scaling Laws（缩放定律）：决策模型并非越大越好，1B 以下的特征分类器往往性能/能耗性价比最高。</p>
+                                <h5>⚙️ Codebase 集成落地</h5>
+                                <p>网关所采用的 Reproducible Evaluation Harness 脚本提供了基础实验测试设计方法与任务配置格式（<a href="file:///c:/Users/pengy/OneDrive/Desktop/InferRoute/benchmarks/datasets/workload.json">workload.json</a>）。</p>
+                            </div>
+                        </details>
+                    </div>
+
+                    <!-- Paper 9 -->
+                    <div class="sub-card" style="display: flex; flex-direction: column; padding: 1.5rem; background: rgba(0, 0, 0, 0.02); border: 1px solid var(--border-color); border-radius: 12px; color: var(--text-primary);">
                         <span style="font-size: 1.5rem; margin-bottom: 0.5rem;">📄</span>
                         <span style="font-family: var(--font-outfit); font-weight: 700; font-size: 1.1rem; color: var(--text-primary); margin-bottom: 0.25rem;">Routing Survey Paper</span>
                         <span style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.75rem;">A Survey on Routing Strategies for Resource Optimisation (2025)</span>
-                        <span style="align-self: flex-start; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(109, 40, 217, 0.2); color: var(--accent-violet); font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 6px;">Read / Preview PDF</span>
-                    </a>
+                        <a href="article/Survey_Routing_Resource_Optimisation.pdf" target="_blank" style="align-self: flex-start; background: rgba(139, 92, 246, 0.15); border: 1px solid rgba(109, 40, 217, 0.2); color: var(--accent-violet); font-size: 0.75rem; font-weight: 600; padding: 0.25rem 0.65rem; border-radius: 6px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.25rem; margin-bottom: 0.75rem;">Read / Preview PDF</a>
+                        
+                        <details class="paper-summary-details">
+                            <summary>查看学术综述 (Paper Summary)</summary>
+                            <div class="paper-summary-content">
+                                <h5>🔍 研究背景</h5>
+                                <p>为大模型服务架构及硬件开销分摊在资源优化垂直领域的科学分类（Taxonomy）建立体系。</p>
+                                <h5>📊 总结机制</h5>
+                                <p>从路由特征空间（Embedding/Text/Agent）、选路时间节点（Pre-generation/In-generation/Post-generation）与基础设施成本（本地 GPU 折旧 vs 云 API 计费）对比了各种架构的吞吐量、响应延时等折中机制。</p>
+                                <h5>⚙️ Codebase 集成落地</h5>
+                                <p>确定了 InferRoute 数据平面与控制平面分离、网关多指标 Prometheus 监控的设计方针。</p>
+                            </div>
+                        </details>
+                    </div>
+
                 </div>
             </div>
 
