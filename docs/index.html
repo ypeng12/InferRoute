@@ -175,7 +175,7 @@
         /* ── Navigation Tabs ── */
         .tabs-nav {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(5, 1fr);
             gap: 0.75rem;
             margin-bottom: 2.5rem;
             background: rgba(0, 0, 0, 0.02);
@@ -625,6 +625,213 @@
             border: 1px solid var(--border-color);
         }
 
+        /* ── Playground Styles ── */
+        .playground-grid {
+            display: grid;
+            grid-template-columns: 1.3fr 0.7fr;
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+        .playground-main-panel {
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            height: 600px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            color: #E2E8F0;
+        }
+        .playground-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(30, 41, 59, 0.5);
+        }
+        .playground-controls {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+        }
+        .playground-select {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #F8FAFC;
+            padding: 0.4rem 0.75rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            outline: none;
+            cursor: pointer;
+        }
+        .playground-select option {
+            background: #0F172A;
+            color: #F8FAFC;
+        }
+        .playground-chat-history {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            background: rgba(15, 23, 42, 0.5);
+        }
+        .playground-bubble {
+            max-width: 80%;
+            padding: 0.85rem 1.1rem;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        .playground-bubble.user {
+            background: #6D28D9;
+            color: #FFFFFF;
+            align-self: flex-end;
+            border-bottom-right-radius: 2px;
+        }
+        .playground-bubble.assistant {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: #E2E8F0;
+            align-self: flex-start;
+            border-bottom-left-radius: 2px;
+        }
+        .playground-input-row {
+            padding: 1rem 1.25rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            gap: 0.75rem;
+            background: rgba(30, 41, 59, 0.3);
+        }
+        .playground-textarea {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #F8FAFC;
+            padding: 0.75rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            outline: none;
+            resize: none;
+            height: 44px;
+        }
+        .playground-send-btn {
+            background: #6D28D9;
+            color: white;
+            border: none;
+            padding: 0 1.25rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .playground-send-btn:hover {
+            background: #7C3AED;
+            box-shadow: 0 0 10px rgba(124, 58, 237, 0.4);
+        }
+        .playground-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+        .playground-wallet {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1rem 1.25rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .playground-wallet-recharge {
+            background: var(--accent-emerald-glow);
+            border: 1px solid var(--accent-emerald);
+            color: var(--accent-emerald);
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .playground-metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+        }
+        .playground-metric-card {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+        .playground-metric-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        .playground-metric-val {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+        .playground-pipeline {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.25rem;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+        .playground-pipeline-flow {
+            display: flex;
+            flex-direction: column;
+            gap: 0.85rem;
+            position: relative;
+            padding-left: 1.25rem;
+            border-left: 2px dashed var(--border-color);
+            margin-left: 6px;
+        }
+        .playground-pipeline-step {
+            font-size: 0.8rem;
+            opacity: 0.4;
+            transition: all 0.3s;
+            position: relative;
+        }
+        .playground-pipeline-step::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: var(--text-secondary);
+            border-radius: 50%;
+            position: absolute;
+            left: -19px;
+            top: 5px;
+        }
+        .playground-pipeline-step.active {
+            opacity: 1;
+            color: var(--accent-violet);
+            font-weight: 600;
+        }
+        .playground-pipeline-step.active::before {
+            background: var(--accent-violet);
+            box-shadow: 0 0 8px var(--accent-violet);
+        }
+        .playground-pipeline-step.success {
+            opacity: 1;
+            color: var(--accent-emerald);
+        }
+        .playground-pipeline-step.success::before {
+            background: var(--accent-emerald);
+        }
+
         /* ── PDF / Print Styles ── */
         @media print {
             body {
@@ -708,6 +915,9 @@
             </button>
             <button class="tab-btn" onclick="switchTab(event, 'self-healing')">
                 <span>🛡️</span> Self-Healing
+            </button>
+            <button class="tab-btn" onclick="switchTab(event, 'playground')">
+                <span>🎮</span> Playground Sandbox
             </button>
         </div>
 
@@ -1485,6 +1695,102 @@ sequenceDiagram
             </div>
         </div>
 
+        <!-- Tab 5: Playground -->
+        <div id="playground" class="tab-content">
+            <div class="glass-card">
+                <h2>🎮 Interactive Gateway Sandbox (Client-Side Simulator)</h2>
+                <p>Play with all 9 academic routing policies directly in your browser. This sandbox simulates prefix cache check, Vegas limiter slots, RouteLLM Bradley-Terry勝率 matching, R2-Router word restraints, and Router-R1 agentic draft correction.</p>
+                
+                <div class="playground-grid">
+                    <!-- Left: Interactive Chat -->
+                    <div class="playground-main-panel">
+                        <div class="playground-header">
+                            <span style="font-weight:700; font-family:var(--font-outfit);">Sandbox Panel</span>
+                            <div class="playground-controls">
+                                <select id="pgPolicySelect" class="playground-select" onchange="onPgPolicyChange(this.value)">
+                                    <option value="frugalgpt">🔄 Stanford FrugalGPT Cascade</option>
+                                    <option value="routerbench">🎯 Martian RouterBench Utility</option>
+                                    <option value="hybrid_llm">⚡ IBM Hybrid LLM Difficulty</option>
+                                    <option value="routellm">🧠 LMSYS RouteLLM Preference</option>
+                                    <option value="equirouter">⚖️ EquiRouter Decision-Aware MLP</option>
+                                    <option value="r2_router">📏 R2-Router Length Constrained</option>
+                                    <option value="router_r1">🤖 Router-R1 Multi-Round Agentic</option>
+                                    <option value="routing_survey">📋 Unified Routing Survey</option>
+                                    <option value="zero">🎲 Zero Router Baseline</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="playground-chat-history" id="pgChatHistory">
+                            <div class="playground-bubble assistant">
+                                System initialized. Select any of the 9 academic routing policies from the dropdown above and send a message. The gateway pipeline visualizer and metrics will update in real-time.
+                            </div>
+                        </div>
+                        
+                        <div class="playground-input-row">
+                            <textarea id="pgPromptInput" class="playground-textarea" placeholder="Type a message to route... (e.g. 'Solve for x: 5x - 15 = 20' or 'def is_prime(n):')"></textarea>
+                            <button class="playground-send-btn" onclick="sendPgMessage()">Send</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Right: Dashboard & Visualizer -->
+                    <div class="playground-sidebar">
+                        <div class="playground-wallet">
+                            <span style="font-size:0.85rem; color:var(--text-secondary); font-weight:500;">Trial Wallet Balance:</span>
+                            <div style="display:flex; align-items:center; gap:0.5rem;">
+                                <span id="pgWalletBalance" style="color:var(--accent-emerald); font-weight:700; font-size:1.1rem;">$5.00</span>
+                                <button class="playground-wallet-recharge" onclick="rechargePgWallet()">+ $10</button>
+                            </div>
+                        </div>
+                        
+                        <div class="playground-metrics-grid">
+                            <div class="playground-metric-card">
+                                <span class="playground-metric-label">Estimated Savings</span>
+                                <span class="playground-metric-val" id="pgSavingsVal">$0.00</span>
+                            </div>
+                            <div class="playground-metric-card">
+                                <span class="playground-metric-label">Tokens Saved</span>
+                                <span class="playground-metric-val" id="pgTokensVal">0</span>
+                            </div>
+                            <div class="playground-metric-card">
+                                <span class="playground-metric-label">Last TTFT</span>
+                                <span class="playground-metric-val" id="pgTtftVal">0 ms</span>
+                            </div>
+                            <div class="playground-metric-card">
+                                <span class="playground-metric-label">Cache Hit Rate</span>
+                                <span class="playground-metric-val" id="pgCacheHitVal">0%</span>
+                            </div>
+                        </div>
+                        
+                        <div class="playground-pipeline">
+                            <h3 style="font-size:0.95rem; font-family:var(--font-outfit); display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
+                                <span>🚀 Gateway Pipeline Visualizer</span>
+                                <span id="pgPipelineStatus" style="font-size:0.75rem; font-weight:600; color:var(--text-secondary);">IDLE</span>
+                            </h3>
+                            <div class="playground-pipeline-flow">
+                                <div class="playground-pipeline-step" id="pgStep_cache">
+                                    <div class="step-name">1. Exact & Prefix Cache Check</div>
+                                    <div class="step-desc" id="pgStepDesc_cache">Checking Redis caches (Radix Trie check)</div>
+                                </div>
+                                <div class="playground-pipeline-step" id="pgStep_limiter">
+                                    <div class="step-name">2. Vegas Concurrency Limiter</div>
+                                    <div class="step-desc" id="pgStepDesc_limiter">Validating slot queue depth</div>
+                                </div>
+                                <div class="playground-pipeline-step" id="pgStep_routing">
+                                    <div class="step-name">3. Routing Decision Engine</div>
+                                    <div class="step-desc" id="pgStepDesc_routing">Evaluating policy formula</div>
+                                </div>
+                                <div class="playground-pipeline-step" id="pgStep_exec">
+                                    <div class="step-name">4. Verification & Output Judge</div>
+                                    <div class="step-desc" id="pgStepDesc_exec">Running syntactic & loop validation</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <script>
@@ -1508,6 +1814,299 @@ sequenceDiagram
 
         function updateSimTau(val) {
             document.getElementById("simTauVal").innerText = parseFloat(val).toFixed(2);
+        }
+
+        // ── Interactive Playground Simulation Engine ──
+        const COSTS = { ollama: 0.0001, vllm: 0.0002, gemini: 0.0015, openai: 0.0030 };
+        let pgWallet = 5.00;
+        let pgSavings = 0.00;
+        let pgTokensSaved = 0;
+        let pgCacheHits = 0;
+        let pgTotalReqs = 0;
+        let pgSentPrompts = new Set();
+        let pgIsProcessing = false;
+
+        function rechargePgWallet() {
+            pgWallet += 10.00;
+            document.getElementById("pgWalletBalance").innerText = "$" + pgWallet.toFixed(2);
+            appendSystemMessage("Wallet recharged with $10.00. New balance: $" + pgWallet.toFixed(2));
+        }
+
+        function onPgPolicyChange(policy) {
+            appendSystemMessage(`Selected Routing Policy: ${policy.toUpperCase()}`);
+        }
+
+        function appendSystemMessage(text) {
+            const chatHistory = document.getElementById("pgChatHistory");
+            const bubble = document.createElement("div");
+            bubble.className = "playground-bubble assistant";
+            bubble.style.borderStyle = "dashed";
+            bubble.style.borderColor = "rgba(139, 92, 246, 0.3)";
+            bubble.innerText = `⚙️ [SYSTEM LOG] ${text}`;
+            chatHistory.appendChild(bubble);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+
+        function appendChatBubble(role, text) {
+            const chatHistory = document.getElementById("pgChatHistory");
+            const bubble = document.createElement("div");
+            bubble.className = `playground-bubble ${role}`;
+            bubble.innerText = text;
+            chatHistory.appendChild(bubble);
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+            return bubble;
+        }
+
+        function resetPipelineSteps() {
+            const steps = ["cache", "limiter", "routing", "exec"];
+            steps.forEach(s => {
+                const el = document.getElementById(`pgStep_${s}`);
+                el.className = "playground-pipeline-step";
+            });
+            document.getElementById("pgStepDesc_cache").innerText = "Checking Redis caches (Radix Trie check)";
+            document.getElementById("pgStepDesc_limiter").innerText = "Validating slot queue depth";
+            document.getElementById("pgStepDesc_routing").innerText = "Evaluating policy formula";
+            document.getElementById("pgStepDesc_exec").innerText = "Running syntactic & loop validation";
+        }
+
+        function setPipelineStepState(step, state, descText) {
+            const el = document.getElementById(`pgStep_${step}`);
+            el.className = `playground-pipeline-step ${state}`;
+            if (descText) {
+                document.getElementById(`pgStepDesc_${step}`).innerText = descText;
+            }
+        }
+
+        function sendPgMessage() {
+            if (pgIsProcessing) return;
+            
+            const promptInput = document.getElementById("pgPromptInput");
+            const promptText = promptInput.value.trim();
+            if (!promptText) return;
+
+            pgIsProcessing = true;
+            promptInput.value = "";
+            pgTotalReqs++;
+
+            // Append user bubble
+            appendChatBubble("user", promptText);
+            resetPipelineSteps();
+
+            document.getElementById("pgPipelineStatus").innerText = "PROCESSING";
+            document.getElementById("pgPipelineStatus").style.color = "var(--accent-violet)";
+
+            // Step 1: Cache check after 400ms
+            setTimeout(() => {
+                setPipelineStepState("cache", "active");
+                
+                const isCacheHit = pgSentPrompts.has(promptText.toLowerCase());
+                pgSentPrompts.add(promptText.toLowerCase());
+
+                setTimeout(() => {
+                    if (isCacheHit) {
+                        setPipelineStepState("cache", "success", "Cache HIT (Exact match in Redis in 1ms)");
+                        pgCacheHits++;
+                        document.getElementById("pgCacheHitVal").innerText = Math.round((pgCacheHits / pgTotalReqs) * 100) + "%";
+                        document.getElementById("pgTtftVal").innerText = "1 ms";
+                        
+                        // Stream response immediately
+                        const cachedResponse = `[CACHE HIT] The answer to your query: "${promptText}" is already cached in Redis memory.`;
+                        const bubble = appendChatBubble("assistant", "");
+                        streamTextIntoBubble(bubble, cachedResponse, () => {
+                            finalizeRequest(0.00, 100, 1.0);
+                        });
+                    } else {
+                        setPipelineStepState("cache", "success", "Cache MISS (Checking suffix tries... no match)");
+                        
+                        // Step 2: Limiter check
+                        setTimeout(() => {
+                            setPipelineStepState("limiter", "active");
+                            setTimeout(() => {
+                                setPipelineStepState("limiter", "success", "Slot Acquired (Adaptive slots = 12/32)");
+                                
+                                // Step 3: Routing
+                                setTimeout(() => {
+                                    setPipelineStepState("routing", "active");
+                                    const policy = document.getElementById("pgPolicySelect").value;
+                                    const decision = makeRoutingDecision(promptText, policy);
+                                    
+                                    setTimeout(() => {
+                                        setPipelineStepState("routing", "success", decision.reason);
+                                        
+                                        // Step 4: Execution
+                                        setTimeout(() => {
+                                            setPipelineStepState("exec", "active");
+                                            executeModelQuery(promptText, decision);
+                                        }, 600);
+                                    }, 800);
+                                }, 500);
+                            }, 500);
+                        }, 400);
+                    }
+                }, 500);
+            }, 300);
+        }
+
+        function makeRoutingDecision(prompt, policy) {
+            const promptLower = prompt.toLowerCase();
+            const words = promptLower.split(" ");
+            const hasCode = promptLower.includes("def ") || promptLower.includes("function") || promptLower.includes("{") || promptLower.includes("code");
+            const hasMath = promptLower.includes("solve") || promptLower.includes("calculate") || promptLower.includes("math") || promptLower.includes("=") || promptLower.includes("+");
+            const hasJson = promptLower.includes("json") || promptLower.includes("schema") || promptLower.includes("extract");
+
+            let backend = "vllm";
+            let reason = "";
+            let r2Active = false;
+            let r1Active = false;
+            let cascadeActive = false;
+
+            if (policy === "frugalgpt" || policy === "cascade") {
+                cascadeActive = true;
+                backend = hasCode || hasMath ? "openai" : "vllm";
+                reason = `FrugalGPT sequential cascade resolved. Primary target: ${backend}`;
+            } else if (policy === "hybrid_llm") {
+                backend = (hasCode || hasMath || hasJson) ? "openai" : "vllm";
+                reason = `Hybrid LLM difficulty split: '${backend}' (Hard Task = ${hasCode || hasMath || hasJson})`;
+            } else if (policy === "routellm") {
+                const prob = hasMath ? 0.88 : (hasCode ? 0.76 : 0.32);
+                backend = prob >= 0.5 ? "openai" : "vllm";
+                reason = `RouteLLM Win rate = ${prob.toFixed(2)}. Selected: ${backend}`;
+            } else if (policy === "equirouter") {
+                backend = hasCode ? "vllm" : (hasMath ? "openai" : "gemini");
+                reason = `EquiRouter Decision-Aware MLP recommended: ${backend}`;
+            } else if (policy === "r2_router") {
+                r2Active = true;
+                backend = (hasCode || hasMath) ? "openai" : "gemini";
+                reason = `R2-Router selected '${backend}' with output brevity constraints`;
+            } else if (policy === "router_r1") {
+                r1Active = true;
+                backend = "vllm";
+                reason = `Router-R1 agentic drafting mode triggered on '${backend}'`;
+            } else if (policy === "routing_survey") {
+                backend = hasCode ? "vllm" : "openai";
+                reason = `Routing Survey pre-generation prediction: ${backend}`;
+            } else if (policy === "zero") {
+                backend = Math.random() < 0.5 ? "openai" : "ollama";
+                reason = `Zero Router mixture baseline selected: ${backend}`;
+            } else {
+                // routerbench
+                backend = hasCode ? "vllm" : (hasMath ? "openai" : "ollama");
+                reason = `RouterBench utility scoring recommended: ${backend}`;
+            }
+
+            return { backend, reason, r2Active, r1Active, cascadeActive };
+        }
+
+        function executeModelQuery(prompt, decision) {
+            const promptLower = prompt.toLowerCase();
+            const hasMath = promptLower.includes("solve") || promptLower.includes("calculate") || promptLower.includes("math") || promptLower.includes("=");
+            const hasCode = promptLower.includes("def ") || promptLower.includes("function") || promptLower.includes("{");
+
+            let ttft = 450;
+            let cost = COSTS[decision.backend] || 0.0002;
+            let completionText = "";
+            let tokens = 120;
+
+            if (decision.backend === "openai" || decision.backend === "gemini") {
+                ttft = decision.backend === "openai" ? 650 : 380;
+                tokens = 150;
+                cost = decision.backend === "openai" ? 0.0030 : 0.0015;
+                
+                if (hasMath) {
+                    completionText = "To solve 5x - 15 = 20, we isolate x step-by-step:\n1. Add 15 to both sides: 5x = 35\n2. Divide both sides by 5: x = 7.\nThe final value of x is 7.";
+                } else if (hasCode) {
+                    completionText = "def is_prime(n):\n    if n <= 1:\n        return False\n    for i in range(2, int(n**0.5) + 1):\n        if n % i == 0:\n            return False\n    return True";
+                } else {
+                    completionText = "Large language models can be routed dynamically to save API costs. I am running on a premium cloud model to provide maximum quality response.";
+                }
+            } else {
+                // Local vllm/ollama
+                ttft = decision.backend === "vllm" ? 180 : 90;
+                tokens = 85;
+                cost = decision.backend === "vllm" ? 0.0002 : 0.0001;
+                
+                if (hasCode) {
+                    completionText = "def is_prime(n):\n    # Local model fast check\n    return n > 1 and all(n % i for i in range(2, int(n**0.5) + 1))";
+                } else {
+                    completionText = "Hello! I am a lightweight local model running on-device. Since this is an easy task, I was selected to save cost and reduce latency.";
+                }
+            }
+
+            // Adjust parameters if R2-Router is active
+            if (decision.r2Active) {
+                cost = cost * 0.4; // saves 60% completion tokens
+                tokens = Math.round(tokens * 0.4);
+                completionText = "Result: x = 7 (brevity constraint active).";
+            }
+
+            document.getElementById("pgTtftVal").innerText = ttft + " ms";
+
+            // If Router-R1 multi-round is active
+            if (decision.r1Active) {
+                // Simulates draft generation failure, then escalation correction!
+                setPipelineStepState("exec", "warning", "Draft failing validation score (0.42 < 0.8). Escalating to Cloud...");
+                
+                setTimeout(() => {
+                    const bubble = appendChatBubble("assistant", "");
+                    let thinkingText = "<think>\nRound 1: Draft response by vllm failed code validator check.\nRound 2: Escalated correction payload to OpenAI GPT-4o-mini.\n</think>\n";
+                    let correctionText = "def is_prime(n):\n    if n <= 1:\n        return False\n    for i in range(2, int(n**0.5) + 1):\n        if n % i == 0:\n            return False\n    return True";
+                    
+                    streamTextIntoBubble(bubble, thinkingText + correctionText, () => {
+                        setPipelineStepState("exec", "success", "Escalation corrected & validated (Pass)");
+                        finalizeRequest(COSTS["vllm"] + COSTS["openai"], tokens + 50, ttft + 800);
+                    });
+                }, 600);
+            } else {
+                // Normal streaming
+                const bubble = appendChatBubble("assistant", "");
+                streamTextIntoBubble(bubble, completionText, () => {
+                    setPipelineStepState("exec", "success", "Response generated and validated (Pass)");
+                    finalizeRequest(cost, tokens, ttft);
+                });
+            }
+        }
+
+        function streamTextIntoBubble(bubble, fullText, callback) {
+            let idx = 0;
+            const words = fullText.split(" ");
+            
+            function streamNext() {
+                if (idx < words.length) {
+                    bubble.innerText += (idx === 0 ? "" : " ") + words[idx];
+                    idx++;
+                    const chatHistory = document.getElementById("pgChatHistory");
+                    chatHistory.scrollTop = chatHistory.scrollHeight;
+                    setTimeout(streamNext, 40);
+                } else {
+                    if (callback) callback();
+                }
+            }
+            streamNext();
+        }
+
+        function finalizeRequest(cost, tokens, ttft) {
+            // Deduct wallet
+            pgWallet = Math.max(0.00, pgWallet - cost);
+            document.getElementById("pgWalletBalance").innerText = "$" + pgWallet.toFixed(2);
+
+            // Compute savings vs OpenAI base ($0.0030)
+            const baseCost = 0.0030;
+            const saved = Math.max(0.0, baseCost - cost);
+            pgSavings += saved;
+            document.getElementById("pgSavingsVal").innerText = "$" + pgSavings.toFixed(4);
+
+            // Increment tokens saved if routed to local model or cache
+            if (cost < 0.0015) {
+                pgTokensSaved += tokens;
+                document.getElementById("pgTokensVal").innerText = pgTokensSaved;
+            }
+
+            document.getElementById("pgCacheHitVal").innerText = Math.round((pgCacheHits / pgTotalReqs) * 100) + "%";
+
+            // Idle pipeline status
+            document.getElementById("pgPipelineStatus").innerText = "COMPLETED";
+            document.getElementById("pgPipelineStatus").style.color = "var(--accent-emerald)";
+            pgIsProcessing = false;
         }
 
         // Live Stepper Simulation Code
