@@ -94,6 +94,34 @@ def adapt_prompt(messages: list[dict[str, str]], target_backend: str) -> list[di
             compressed_content = compress_few_shot_examples(content, max_examples=1)
             adapted_messages.append({"role": role, "content": compressed_content})
         else:
-            adapted_messages.append({"role": role, "content": content})
-            
     return adapted_messages
+
+
+def apply_r2_constraints(messages: list[dict[str, str]], target_backend: str, lambda_val: float) -> list[dict[str, str]]:
+    """
+    R2-Router length constraint adaptation.
+    If using a cloud backend and lambda_val is low (cost-sensitive),
+    injects dynamic brevity instructions into the prompt to save output token costs.
+    """
+    if target_backend not in ["openai", "gemini"] or lambda_val >= 0.8:
+        return messages
+
+    logger.info(f"[R2-Router] Cost-sensitive mode (lambda={lambda_val:.3f}). Injecting brevity constraints.")
+
+    # Search for an existing system message
+    system_index = -1
+    for idx, msg in enumerate(messages):
+        if msg.get("role") == "system":
+            system_index = idx
+            break
+
+    brevity_instr = " Please be extremely concise. Keep your total response under 60 words and avoid conversational filler."
+
+    adapted = [m.copy() for m in messages]
+    if system_index != -1:
+        adapted[system_index]["content"] = adapted[system_index]["content"] + brevity_instr
+    else:
+        adapted.insert(0, {"role": "system", "content": "You are a concise assistant." + brevity_instr})
+
+    return adapted
+

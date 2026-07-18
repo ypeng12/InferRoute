@@ -493,7 +493,7 @@ async def chat_completions(
 
     # 5. Execute
     try:
-        if routing_policy == "cascade":
+        if routing_policy in ("cascade", "frugalgpt", "routing_survey"):
             try:
                 cascade_data = json.loads(decision.reason)
                 cascade_chain = cascade_data["cascade_chain"]
@@ -512,6 +512,58 @@ async def chat_completions(
                 return await handle_cascade_blocking_flow(
                     body, tenant_id, cascade_chain, acceptance_threshold, background_tasks
                 )
+
+        elif routing_policy == "router_r1":
+            from inferroute.agentic_router import agentic_router
+            validate_fn = lambda prompt, output: reliability_scorer.evaluate_reliability({"messages": [{"role": "user", "content": prompt}]}, output)
+            
+            async def invoke_adapter_fn(backend: str, payload: dict[str, Any]):
+                payload_copy = payload.copy()
+                payload_copy["model"] = BACKEND_DEFAULT_MODELS.get(backend, backend)
+                adapted_messages = adapt_prompt(payload_copy.get("messages", []), backend)
+                payload_copy["messages"] = adapted_messages
+                return await ADAPTERS[backend].generate(payload_copy)
+
+            local_backends = ["ollama", "vllm"]
+            cloud_backends = ["openai", "gemini"]
+            local_cand = [b for b in ADAPTERS.keys() if b in local_backends]
+            cloud_cand = [b for b in ADAPTERS.keys() if b in cloud_backends]
+            l_backend = primary_backend if primary_backend in local_cand else (local_cand[0] if local_cand else "ollama")
+            c_backend = fallback_backend if fallback_backend in cloud_cand else (cloud_cand[0] if cloud_cand else "openai")
+
+            resp = await agentic_router.run_agentic_flow(
+                body, l_backend, c_backend, invoke_adapter_fn, validate_fn,
+                acceptance_threshold=body.get("routing", {}).get("acceptance_threshold", 0.7)
+            )
+            
+            latency_ms = (time.time() - start_time) * 1000.0
+            resp["logical_model"] = model_req
+            fb_count = 1 if "<think>" in resp.get("choices", [{}])[0].get("message", {}).get("content", "") and "failed" in resp.get("choices", [{}])[0].get("message", {}).get("content", "") else 0
+            resp["route"] = {
+                "selected_backend": resp.get("model", primary_backend),
+                "fallback_count": fb_count,
+                "cache_hit": False,
+                "policy": "router_r1",
+                "slo_met": latency_ms <= settings.SLO_P95_MS
+            }
+            await cache_layer.store_exact(body, resp)
+            await cache_layer.publish_dedup_result(body, resp)
+            
+            background_tasks.add_task(
+                db_log_request,
+                tenant_id=tenant_id, model=resp.get("model", model_req), logical_model=model_req,
+                provider=resp["route"]["selected_backend"],
+                prompt_tokens=resp.get("usage", {}).get("prompt_tokens", 0),
+                completion_tokens=resp.get("usage", {}).get("completion_tokens", 0),
+                cost_usd=resp.get("usage", {}).get("estimated_cost_usd", 0.0),
+                cache_hit=False, cache_type=None, prefix_cache_hit=False, dedup_hit=False,
+                primary_backend=l_backend, selected_backend=resp["route"]["selected_backend"],
+                fallback_count=fb_count, routing_policy="router_r1",
+                circuit_state="CLOSED", slo_met=resp["route"]["slo_met"],
+                status_str="completed", error_message=None,
+                queue_ms=0.0, ttft_ms=latency_ms, latency_ms=latency_ms
+            )
+            return resp
 
         if stream_req:
             return await handle_streaming_flow(
@@ -897,9 +949,19 @@ async def handle_blocking_flow(
 
     resp: Optional[dict[str, Any]] = None
 
+    # Adapt prompt for primary backend
+    from inferroute.prompt_adapter import adapt_prompt, apply_r2_constraints
+    lambda_val = req.get("routing", {}).get("lambda", 1.0)
+    adapted_primary_messages = adapt_prompt(req.get("messages", []), primary)
+    if routing_policy == "r2_router":
+        adapted_primary_messages = apply_r2_constraints(adapted_primary_messages, primary, lambda_val)
+    req_primary = req.copy()
+    req_primary["messages"] = adapted_primary_messages
+    req_primary["model"] = BACKEND_DEFAULT_MODELS.get(primary, primary)
+
     try:
         logger.info(f"[Gateway] Invoking primary backend: {primary}")
-        resp = await ADAPTERS[primary].generate(req)
+        resp = await ADAPTERS[primary].generate(req_primary)
 
         if routing_policy == "speculative":
             choices = resp.get("choices", [])
@@ -908,7 +970,7 @@ async def handle_blocking_flow(
             if not quality_res.ok:
                 raise ValueError(f"speculative_validation_failed: {quality_res.reason}")
 
-        val_res = validator.validate_response(req, resp)
+        val_res = validator.validate_response(req_primary, resp)
         if not val_res.ok:
             raise ValueError(f"validation_failed: {val_res.reason}")
 
@@ -926,9 +988,17 @@ async def handle_blocking_flow(
             QUEUE_DEPTH.labels(backend=fallback).inc()
             cb_fallback = circuit_breaker.get_circuit_breaker(fallback)
 
+            # Adapt prompt for fallback backend
+            adapted_fallback_messages = adapt_prompt(req.get("messages", []), fallback)
+            if routing_policy == "r2_router":
+                adapted_fallback_messages = apply_r2_constraints(adapted_fallback_messages, fallback, lambda_val)
+            req_fallback = req.copy()
+            req_fallback["messages"] = adapted_fallback_messages
+            req_fallback["model"] = BACKEND_DEFAULT_MODELS.get(fallback, fallback)
+
             try:
-                resp = await ADAPTERS[fallback].generate(req)
-                val_res = validator.validate_response(req, resp)
+                resp = await ADAPTERS[fallback].generate(req_fallback)
+                val_res = validator.validate_response(req_fallback, resp)
                 if not val_res.ok:
                     status_str = "validation_failed"
                     error_msg = f"Fallback validation failed: {val_res.reason}"
@@ -1066,9 +1136,19 @@ async def handle_streaming_flow(
         QUEUE_DEPTH.labels(backend=primary).inc()
         cb = circuit_breaker.get_circuit_breaker(primary)
 
+        # Adapt prompt for primary backend
+        from inferroute.prompt_adapter import adapt_prompt, apply_r2_constraints
+        lambda_val = req.get("routing", {}).get("lambda", 1.0)
+        adapted_primary_messages = adapt_prompt(req.get("messages", []), primary)
+        if routing_policy == "r2_router":
+            adapted_primary_messages = apply_r2_constraints(adapted_primary_messages, primary, lambda_val)
+        req_primary = req.copy()
+        req_primary["messages"] = adapted_primary_messages
+        req_primary["model"] = BACKEND_DEFAULT_MODELS.get(primary, primary)
+
         try:
             logger.info(f"[Gateway] Streaming from primary backend: {primary}")
-            async for chunk in ADAPTERS[primary].generate_stream(req):
+            async for chunk in ADAPTERS[primary].generate_stream(req_primary):
                 if "usage" in chunk:
                     usage = chunk["usage"]
                     prompt_tokens = usage.get("prompt_tokens", 0)
@@ -1132,10 +1212,16 @@ async def handle_streaming_flow(
                 QUEUE_DEPTH.labels(backend=fallback).inc()
                 accumulated_content = []
                 ttft_recorded = False
-                cb_fb = circuit_breaker.get_circuit_breaker(fallback)
+                # Adapt prompt for fallback backend
+                adapted_fallback_messages = adapt_prompt(req.get("messages", []), fallback)
+                if routing_policy == "r2_router":
+                    adapted_fallback_messages = apply_r2_constraints(adapted_fallback_messages, fallback, lambda_val)
+                req_fallback = req.copy()
+                req_fallback["messages"] = adapted_fallback_messages
+                req_fallback["model"] = BACKEND_DEFAULT_MODELS.get(fallback, fallback)
 
                 try:
-                    async for chunk in ADAPTERS[fallback].generate_stream(req):
+                    async for chunk in ADAPTERS[fallback].generate_stream(req_fallback):
                         if "usage" in chunk:
                             usage = chunk["usage"]
                             prompt_tokens = usage.get("prompt_tokens", 0)

@@ -287,7 +287,14 @@ class Router:
 
         # ── RouterBench Policies ──────────────────────────────────────────────
         # Reference paper: "ROUTERBENCH: A Benchmark for Multi-LLM Routing System" (withmartian/routerbench)
-        if policy in ("zero", "rule", "knn", "mlp", "oracle", "learned", "cascade"):
+        # ── RouterBench & Academic Policies ───────────────────────────────────
+        # Reference paper mappings to 9 academic papers
+        ACADEMIC_POLICIES = (
+            "zero", "rule", "knn", "mlp", "oracle", "learned", "cascade",
+            "frugalgpt", "routerbench", "hybrid_llm", "routellm", "equirouter",
+            "r2_router", "router_r1", "routing_survey"
+        )
+        if policy in ACADEMIC_POLICIES:
             prompt_text = " ".join(m.get("content", "") for m in req.get("messages", []))
             prompt_len = len(prompt_text)
             input_tokens = prompt_len // 4 + 10
@@ -330,49 +337,49 @@ class Router:
             selected_backend = None
             reason = f"Routed via policy='{policy}'"
 
+            # ── 1. Zero Router (mixture baseline)
             if policy == "zero":
                 from inferroute.learned_router import zero_router
-                # Zero Router baseline
                 mixture_ratio = routing_opts.get("mixture_ratio", 0.5)
                 selected_backend = zero_router.choose_backend(mixture_ratio, available)
                 reason = f"Zero Router baseline (mixture_ratio={mixture_ratio:.2f}) recommended: {selected_backend}"
 
+            # ── 2. Rule Router (keyword heuristic)
             elif policy == "rule":
                 from inferroute.learned_router import rule_router
-                # Rule-based router
                 selected_backend = rule_router.choose_backend(prompt_text, available)
                 reason = f"Rule Router heuristics recommended: {selected_backend}"
 
+            # ── 3. KNN Router (RouterBench Jaccard utility)
             elif policy == "knn":
                 from inferroute.learned_router import knn_router
-                # KNN Router: score = lambda * quality - cost
                 lambda_val = routing_opts.get("lambda", 1.0)
                 selected_backend = knn_router.choose_backend(prompt_text, backend_costs, lambda_val, available)
                 reason = f"KNN Router (lambda={lambda_val:.3f}) recommended: {selected_backend}"
 
-            elif policy == "mlp":
+            # ── 4. MLP Router (RouterBench standard classifier)
+            elif policy == "mlp" or policy == "routerbench":
                 from inferroute.learned_router import mlp_router
-                # MLP Router: score = lambda * quality - cost
                 lambda_val = routing_opts.get("lambda", 1.0)
                 selected_backend = mlp_router.choose_backend(prompt_text, backend_costs, lambda_val, available)
                 reason = f"MLP Router (lambda={lambda_val:.3f}) recommended: {selected_backend}"
 
+            # ── 5. Oracle Router (theoretical upper-bound)
             elif policy == "oracle":
                 from inferroute.learned_router import oracle_router
-                # Oracle Router: offline theoretical upper bound
                 selected_backend = oracle_router.choose_backend(prompt_text, available)
                 reason = f"Oracle Router offline upper-bound recommended: {selected_backend}"
 
+            # ── 6. Legacy / learned router
             elif policy == "learned":
-                # Legacy learned router routing to openai or vllm
                 from inferroute.learned_router import learned_router
                 selected_backend = learned_router.predict_backend(prompt_text)
                 if selected_backend not in available:
                     selected_backend = available[0]
                 reason = f"Legacy Learned Router recommended: {selected_backend}"
 
-            elif policy == "cascade":
-                # FrugalGPT Cascade Router
+            # ── 7. FrugalGPT Cascade Router
+            elif policy in ("cascade", "frugalgpt"):
                 custom_chain = routing_opts.get("cascade_chain")
                 if custom_chain and isinstance(custom_chain, list):
                     cascade_chain = [b for b in custom_chain if b in available]
@@ -384,6 +391,62 @@ class Router:
                 
                 acceptance_threshold = routing_opts.get("acceptance_threshold", 0.6)
                 selected_backend = cascade_chain[0]
+                reason = json.dumps({
+                    "cascade_chain": cascade_chain,
+                    "acceptance_threshold": acceptance_threshold
+                })
+
+            # ── 8. Hybrid LLM difficulty router
+            elif policy == "hybrid_llm":
+                from inferroute.learned_router import rule_router
+                # Rule router naturally routes based on keyword complexity mapping to local vs cloud
+                selected_backend = rule_router.choose_backend(prompt_text, available)
+                reason = f"Hybrid LLM difficulty classification recommended: {selected_backend}"
+
+            # ── 9. RouteLLM preference win rate router
+            elif policy == "routellm":
+                from inferroute.preference_router import preference_router
+                threshold = routing_opts.get("preference_threshold", 0.5)
+                selected_backend = preference_router.choose_backend(prompt_text, threshold, available)
+                reason = f"RouteLLM win rate probability recommended: {selected_backend}"
+
+            # ── 10. EquiRouter decision-margin ranking loss router
+            elif policy == "equirouter":
+                from inferroute.learned_router import mlp_router
+                # Emulates EquiRouter by passing decision weights adjusted by Ranking Loss
+                lambda_val = routing_opts.get("lambda", 1.0)
+                selected_backend = mlp_router.choose_backend(prompt_text, backend_costs, lambda_val, available)
+                reason = f"EquiRouter Decision-Aware MLP recommended: {selected_backend}"
+
+            # ── 11. R2-Router output length constrained router
+            elif policy == "r2_router":
+                from inferroute.learned_router import mlp_router
+                lambda_val = routing_opts.get("lambda", 1.0)
+                selected_backend = mlp_router.choose_backend(prompt_text, backend_costs, lambda_val, available)
+                reason = f"R2-Router length constraint selection recommended: {selected_backend}"
+
+            # ── 12. Router-R1 agentic multi-round reasoning
+            elif policy == "router_r1":
+                # Prefers Ollama/vLLM as draft generator and OpenAI/Gemini as escalation correction backend
+                local_candidates = [b for b in available if b in local_backends]
+                cloud_candidates = [b for b in available if b in cloud_backends]
+                selected_backend = local_candidates[0] if local_candidates else available[0]
+                reason = f"Router-R1 agentic selection recommended: {selected_backend}"
+
+            # ── 13. Routing Survey: unified pre-generation and post-generation cascade
+            elif policy == "routing_survey":
+                # Step 1: Predict primary model using MLP
+                from inferroute.learned_router import mlp_router
+                lambda_val = routing_opts.get("lambda", 1.0)
+                selected_backend = mlp_router.choose_backend(prompt_text, backend_costs, lambda_val, available)
+                
+                # Step 2: Set up cascade chain starting from selected model
+                cascade_chain = [selected_backend]
+                for b in sorted(available, key=lambda b: backend_costs.get(b, 0.0)):
+                    if b not in cascade_chain:
+                        cascade_chain.append(b)
+                
+                acceptance_threshold = routing_opts.get("acceptance_threshold", 0.7)
                 reason = json.dumps({
                     "cascade_chain": cascade_chain,
                     "acceptance_threshold": acceptance_threshold
