@@ -1,5 +1,7 @@
 # 🎯 InferRoute: High-Availability LLM Inference Gateway & Observability Router
 
+InferRoute is built upon robust theoretical frameworks for cost-performance trade-offs and multi-tier cascading inference.
+
 <p align="center">
   <img src="https://img.shields.io/badge/License-MIT-emerald.svg" alt="License">
   <img src="https://img.shields.io/badge/Python-3.12%20%7C%203.13-blue.svg" alt="Python Version">

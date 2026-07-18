@@ -1,5 +1,7 @@
 # 📖 Academic Foundations: FrugalGPT & RouterBench Integration
 
+InferRoute is built upon robust theoretical frameworks for cost-performance trade-offs and multi-tier cascading inference.
+
 InferRoute's core routing architecture is built on the theoretical and mathematical foundations of two landmark papers in LLM cost-performance optimization:
 
 1. **FrugalGPT**: *"FrugalGPT: How to Use Large Language Models While Reducing Cost and Improving Performance"* (Chen et al., Stanford University, 2023).
