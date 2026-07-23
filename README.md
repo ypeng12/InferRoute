@@ -1,3 +1,13 @@
+---
+title: InferRoute Multi-LLM Gateway
+emoji: 🚀
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # 🎯 InferRoute: High-Availability LLM Inference Gateway & Observability Router
 
 InferRoute is built upon robust theoretical frameworks for cost-performance trade-offs and multi-tier cascading inference.
