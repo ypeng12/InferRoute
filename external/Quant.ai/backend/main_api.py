@@ -819,6 +819,32 @@ def ai_chat_endpoint(request: ChatRequest):
         return {"success": False, "error": str(e)}
 
 
+class ModeSelectRequest(BaseModel):
+    mode_id: str
+
+@app.get("/api/agent/modes")
+def get_ai_agent_modes():
+    """
+    获取 AI 炒股大模型的 3 种交易模式预设与当前生效模式
+    """
+    from app.agent_modes import get_all_modes, get_current_mode
+    return {
+        "success": True,
+        "modes": get_all_modes(),
+        "current_mode": get_current_mode()
+    }
+
+@app.post("/api/agent/mode/select")
+def select_ai_agent_mode(req: ModeSelectRequest):
+    """
+    切换 AI 炒股大模型的交易模式
+    """
+    from app.agent_modes import set_current_mode
+    mode = set_current_mode(req.mode_id)
+    live_runner.add_log(f"🤖 AI 交易模式已成功切换为：[{mode['name']}]")
+    return {"success": True, "current_mode": mode}
+
+
 class DecisionRequest(BaseModel):
     ticker: str
     interval: str = "1d"
