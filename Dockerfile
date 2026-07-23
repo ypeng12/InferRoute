@@ -4,7 +4,7 @@ FROM python:3.12-slim
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PORT=8080 \
+    PORT=7860 \
     DATABASE_URL=sqlite+aiosqlite:////app/inferroute.db \
     MOCK_OPENAI=true \
     MOCK_GEMINI=true \
@@ -29,9 +29,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY inferroute/ ./inferroute/
 COPY docs/ ./docs/
 COPY benchmarks/ ./benchmarks/
+COPY external/ ./external/
 
-# Expose default port
-EXPOSE 8080
+# Expose default port (7860 for Hugging Face Spaces)
+EXPOSE 7860
 
 # Command to run uvicorn dynamically binding to PORT environment variable (for Render/Hugging Face compatibility)
-CMD ["sh", "-c", "python -m uvicorn inferroute.main:app --host 0.0.0.0 --port ${PORT:-8080}"]
+CMD ["sh", "-c", "python -m uvicorn inferroute.main:app --host 0.0.0.0 --port ${PORT:-7860}"]

@@ -47,18 +47,49 @@ class GeminiAdapter(BaseAdapter):
         return prompt_tokens * prices["input"] + completion_tokens * prices["output"]
 
     def _messages_to_gemini(self, messages: list[dict]) -> tuple[str, list[dict]]:
-        """Convert OpenAI-style messages to Gemini content format."""
+        """Convert OpenAI-style messages to Gemini content format, supporting text & images."""
+        import base64
         system_prompt = ""
         history = []
         for msg in messages:
             role = msg.get("role", "user")
             content = msg.get("content", "")
+            
             if role == "system":
-                system_prompt = content
-            elif role == "user":
-                history.append({"role": "user", "parts": [content]})
-            elif role == "assistant":
-                history.append({"role": "model", "parts": [content]})
+                if isinstance(content, str):
+                    system_prompt = content
+                elif isinstance(content, list):
+                    system_prompt = " ".join([part.get("text", "") for part in content if part.get("type") == "text"])
+                continue
+
+            parts = []
+            if isinstance(content, str):
+                parts.append(content)
+            elif isinstance(content, list):
+                for part in content:
+                    part_type = part.get("type", "text")
+                    if part_type == "text":
+                        parts.append(part.get("text", ""))
+                    elif part_type == "image_url":
+                        img_url = part.get("image_url", {}).get("url", "")
+                        if img_url.startswith("data:"):
+                            try:
+                                header, encoded = img_url.split(",", 1)
+                                mime_type = header.split(";")[0].split(":")[1]
+                                decoded_data = base64.b64decode(encoded)
+                                parts.append({
+                                    "mime_type": mime_type,
+                                    "data": decoded_data
+                                })
+                            except Exception as e:
+                                logger.error(f"Failed to parse base64 image: {e}")
+                        else:
+                            # If it's a normal URL, we can only add it as text or log warning
+                            logger.warning(f"Unsupported non-base64 image URL in Gemini adapter: {img_url}")
+            
+            gemini_role = "user" if role == "user" else "model"
+            history.append({"role": gemini_role, "parts": parts})
+            
         return system_prompt, history
 
     async def generate(self, req: dict[str, Any]) -> dict[str, Any]:
@@ -238,7 +269,14 @@ class GeminiAdapter(BaseAdapter):
             model_name = req.get("model", self.model_name)
             span.set_attribute("llm.model", model_name)
 
-            prompt_len = sum(len(m.get("content", "")) for m in req.get("messages", []))
+            prompt_len = 0
+            for m in req.get("messages", []):
+                content = m.get("content", "")
+                if isinstance(content, str):
+                    prompt_len += len(content)
+                elif isinstance(content, list):
+                    prompt_len += sum(len(part.get("text", "")) for part in content if part.get("type") == "text")
+
             prompt_tokens = prompt_len // 4 + 5
             completion_tokens = 75
 
@@ -252,6 +290,9 @@ class GeminiAdapter(BaseAdapter):
             from inferroute.adapters.mock_generator import generate_mock_reply
             messages = req.get("messages", [])
             prompt = messages[-1].get("content", "") if messages else ""
+            if isinstance(prompt, list):
+                prompt = " ".join([part.get("text", "") for part in prompt if part.get("type", "text") == "text"])
+
             content = generate_mock_reply(prompt, "gemini")
 
             return {
@@ -279,12 +320,22 @@ class GeminiAdapter(BaseAdapter):
         model_name = req.get("model", self.model_name)
         span.set_attribute("llm.model", model_name)
 
-        prompt_len = sum(len(m.get("content", "")) for m in req.get("messages", []))
+        prompt_len = 0
+        for m in req.get("messages", []):
+            content = m.get("content", "")
+            if isinstance(content, str):
+                prompt_len += len(content)
+            elif isinstance(content, list):
+                prompt_len += sum(len(part.get("text", "")) for part in content if part.get("type") == "text")
+
         prompt_tokens = prompt_len // 4 + 5
 
         from inferroute.adapters.mock_generator import generate_mock_reply
         messages = req.get("messages", [])
         prompt = messages[-1].get("content", "") if messages else ""
+        if isinstance(prompt, list):
+            prompt = " ".join([part.get("text", "") for part in prompt if part.get("type", "text") == "text"])
+
         content = generate_mock_reply(prompt, "gemini")
 
         words = content.split(" ")

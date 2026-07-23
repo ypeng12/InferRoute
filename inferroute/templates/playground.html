@@ -480,55 +480,187 @@
     </header>
 
     <main>
-        <!-- Left Panel: Chat Playground -->
+        <!-- Left Panel: Chat Playground & Plugins Hub -->
         <div class="glass-panel playground-container">
-            <div class="panel-header" style="flex-direction: column; align-items: stretch; gap: 0.75rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                    <div class="panel-title">Interactive Sandbox</div>
-                    <div class="controls-row">
-                        <select id="modelSelect">
-                            <option value="edge/auto">🎯 Auto Route (Edge Priority)</option>
-                            <option value="openai/gpt-4o-mini">Cloud: OpenAI GPT-4o-mini</option>
-                            <option value="gemini/gemini-1.5-flash">Cloud: Google Gemini Flash</option>
-                            <option value="vllm/llama-3-8b">Local: vLLM Llama-3-8B</option>
-                            <option value="ollama/llama3">Local: Ollama Llama-3</option>
-                        </select>
-                        <select id="policySelect">
-                            <option value="speculative">🛡️ Speculative Fallback (Cost Saver)</option>
-                            <option value="latency">⚡ Latency-Aware (Fastest)</option>
-                            <option value="cost">💰 Cost-Aware (Cheapest)</option>
-                            <option value="zero">🎲 Zero Router (Baseline Mix)</option>
-                            <option value="rule">📋 Rule-Based Router (Heuristics)</option>
-                            <option value="knn">🧠 KNN Router (Contextual Similarity)</option>
-                            <option value="mlp">🕸️ MLP Router (Feature Classifier)</option>
-                            <option value="oracle">🔮 Oracle Router (Theoretical Optimal)</option>
-                            <option value="cascade">🔄 Cascade Router (FrugalGPT Style)</option>
-                            <option value="frugalgpt"> Stanford FrugalGPT Cascade</option>
-                            <option value="routerbench"> Martian RouterBench Utility</option>
-                            <option value="hybrid_llm"> IBM Hybrid LLM Difficulty</option>
-                            <option value="routellm"> LMSYS RouteLLM Preference</option>
-                            <option value="equirouter"> EquiRouter Decision-Aware MLP</option>
-                            <option value="r2_router"> R2-Router Length Constrained</option>
-                            <option value="router_r1"> Router-R1 Multi-Round Agentic</option>
-                            <option value="routing_survey"> Unified Routing Survey (Hybrid)</option>
-                        </select>
+            <!-- Tabs Header -->
+            <div class="plugin-tabs-bar" style="display: flex; border-bottom: 1px solid var(--border-color); background: rgba(0, 0, 0, 0.2);">
+                <div id="tabChat" class="plugin-tab active" style="flex: 1; text-align: center; padding: 1rem; cursor: pointer; font-weight: 600; font-size: 0.95rem; border-bottom: 3px solid var(--accent-violet); color: var(--text-primary); transition: all 0.3s;">💬 Playground Sandbox</div>
+                <div id="tabPlugins" class="plugin-tab" style="flex: 1; text-align: center; padding: 1rem; cursor: pointer; font-weight: 600; font-size: 0.95rem; color: var(--text-secondary); border-bottom: 3px solid transparent; transition: all 0.3s;">🧩 AI Plugins Hub</div>
+            </div>
+
+            <!-- Chat Tab Content -->
+            <div id="chatTabContent" style="display: flex; flex-direction: column; flex: 1; overflow: hidden;">
+                <div class="panel-header" style="flex-direction: column; align-items: stretch; gap: 0.75rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                        <div class="panel-title">Interactive Sandbox</div>
+                        <div class="controls-row">
+                            <select id="modelSelect">
+                                <option value="edge/auto">🎯 Auto Route (Edge Priority)</option>
+                                <option value="openai/gpt-4o-mini">Cloud: OpenAI GPT-4o-mini</option>
+                                <option value="gemini/gemini-1.5-flash">Cloud: Google Gemini Flash</option>
+                                <option value="vllm/llama-3-8b">Local: vLLM Llama-3-8B</option>
+                                <option value="ollama/llama3">Local: Ollama Llama-3</option>
+                            </select>
+                            <select id="policySelect">
+                                <option value="speculative">🛡️ Speculative Fallback (Cost Saver)</option>
+                                <option value="latency">⚡ Latency-Aware (Fastest)</option>
+                                <option value="cost">💰 Cost-Aware (Cheapest)</option>
+                                <option value="zero">🎲 Zero Router (Baseline Mix)</option>
+                                <option value="rule">📋 Rule-Based Router (Heuristics)</option>
+                                <option value="knn">🧠 KNN Router (Contextual Similarity)</option>
+                                <option value="mlp">🕸️ MLP Router (Feature Classifier)</option>
+                                <option value="oracle">🔮 Oracle Router (Theoretical Optimal)</option>
+                                <option value="cascade">🔄 Cascade Router (FrugalGPT Style)</option>
+                                <option value="frugalgpt"> Stanford FrugalGPT Cascade</option>
+                                <option value="routerbench"> Martian RouterBench Utility</option>
+                                <option value="hybrid_llm"> IBM Hybrid LLM Difficulty</option>
+                                <option value="routellm"> LMSYS RouteLLM Preference</option>
+                                <option value="equirouter"> EquiRouter Decision-Aware MLP</option>
+                                <option value="r2_router"> R2-Router Length Constrained</option>
+                                <option value="router_r1"> Router-R1 Multi-Round Agentic</option>
+                                <option value="routing_survey"> Unified Routing Survey (Hybrid)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <!-- Dynamic Parameter Control Slider (RouterBench settings) -->
+                    <div id="paramControlContainer" style="display: none; align-items: center; justify-content: flex-end; gap: 1rem; padding: 0.5rem 0; border-top: 1px solid var(--border-color); font-size: 0.85rem; width: 100%;">
+                        <span id="paramLabel" style="color: var(--text-secondary);">Willingness to Pay (λ):</span>
+                        <input type="range" id="paramSlider" min="0" max="5" step="0.1" value="1.0" style="width: 180px; accent-color: var(--accent-violet); cursor: pointer;">
+                        <span id="paramVal" style="color: var(--accent-violet); font-weight: 600; min-width: 35px; text-align: right;">1.0</span>
                     </div>
                 </div>
-                <!-- Dynamic Parameter Control Slider (RouterBench settings) -->
-                <div id="paramControlContainer" style="display: none; align-items: center; justify-content: flex-end; gap: 1rem; padding: 0.5rem 0; border-top: 1px solid var(--border-color); font-size: 0.85rem; width: 100%;">
-                    <span id="paramLabel" style="color: var(--text-secondary);">Willingness to Pay (λ):</span>
-                    <input type="range" id="paramSlider" min="0" max="5" step="0.1" value="1.0" style="width: 180px; accent-color: var(--accent-violet); cursor: pointer;">
-                    <span id="paramVal" style="color: var(--accent-violet); font-weight: 600; min-width: 35px; text-align: right;">1.0</span>
+                <div class="chat-history" id="chatHistory">
+                    <div class="message-bubble message-assistant">
+                        Welcome to InferRoute Gateway. Send a prompt to see active KV caching, speculative loop fallback, and latency routing statistics in real-time.
+                    </div>
+                </div>
+                <div class="chat-input-area">
+                    <textarea id="promptInput" placeholder="Type a message..." rows="1"></textarea>
+                    <button class="send-btn" id="sendBtn">Send</button>
                 </div>
             </div>
-            <div class="chat-history" id="chatHistory">
-                <div class="message-bubble message-assistant">
-                    Welcome to InferRoute Gateway. Send a prompt to see active KV caching, speculative loop fallback, and latency routing statistics in real-time.
+
+            <!-- Plugins Hub Tab Content -->
+            <div id="pluginsTabContent" style="display: none; flex-direction: column; flex: 1; overflow-y: auto; padding: 1.5rem; gap: 1.5rem;">
+                <div style="margin-bottom: 0.5rem;">
+                    <h2 style="font-size: 1.4rem; font-weight: 700; background: linear-gradient(135deg, #FFF 30%, var(--accent-cyan) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: -0.5px;">🧩 Ready-to-Use AI Plugins</h2>
+                    <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">Deploy your AI tasks instantly using optimized Gemini & cloud routes. Perfect for image extraction, document parsing, and summaries.</p>
                 </div>
-            </div>
-            <div class="chat-input-area">
-                <textarea id="promptInput" placeholder="Type a message..." rows="1"></textarea>
-                <button class="send-btn" id="sendBtn">Send</button>
+                
+                <div class="plugin-grid" style="display: grid; grid-template-columns: 1fr; gap: 1.5rem;">
+                    <!-- OCR Plugin Card -->
+                    <div class="plugin-card" style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <div style="font-size: 1.8rem; background: rgba(6, 182, 212, 0.1); width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 8px; border: 1px solid rgba(6, 182, 212, 0.2);">📸</div>
+                            <div>
+                                <h3 style="font-size: 1.05rem; font-weight: 600; color: var(--text-primary);">Image OCR & Text Recognition</h3>
+                                <p style="font-size: 0.8rem; color: var(--text-secondary);">Extract structured, readable text from uploaded images using Gemini Vision.</p>
+                            </div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 0.75rem; background: rgba(0,0,0,0.15); padding: 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.03);">
+                            <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+                                <label style="font-size: 0.8rem; font-weight: 500; color: var(--text-secondary);">Select Image File:</label>
+                                <input type="file" id="ocrFile" accept="image/*" style="font-size: 0.85rem; color: var(--text-primary); cursor: pointer;">
+                            </div>
+                            <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                                <div style="display: flex; flex-direction: column; gap: 0.35rem; flex: 1; min-width: 150px;">
+                                    <label style="font-size: 0.8rem; font-weight: 500; color: var(--text-secondary);">Language:</label>
+                                    <select id="ocrLang" style="width: 100%;">
+                                        <option value="auto">🌍 Auto Detect</option>
+                                        <option value="English">English</option>
+                                        <option value="Chinese">Chinese (中文)</option>
+                                        <option value="Spanish">Spanish</option>
+                                        <option value="Japanese">Japanese</option>
+                                    </select>
+                                </div>
+                                <button id="ocrSubmit" class="send-btn" style="height: 38px; align-self: flex-end; margin-top: auto; padding: 0 1.25rem; font-size: 0.85rem; background: linear-gradient(135deg, var(--accent-cyan), #0891B2);">Extract Text</button>
+                            </div>
+                        </div>
+                        <div id="ocrResultContainer" style="display: none; flex-direction: column; gap: 0.5rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: var(--text-secondary);">
+                                <span>Output Result:</span>
+                                <span id="ocrMeta" style="color: var(--accent-emerald); font-weight: 500;"></span>
+                            </div>
+                            <pre id="ocrResult" style="white-space: pre-wrap; font-family: 'Courier New', Courier, monospace; font-size: 0.85rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; color: var(--text-primary); max-height: 250px; overflow-y: auto; line-height: 1.5;"></pre>
+                        </div>
+                    </div>
+
+                    <!-- Summarization Plugin Card -->
+                    <div class="plugin-card" style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <div style="font-size: 1.8rem; background: rgba(139, 92, 246, 0.1); width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 8px; border: 1px solid rgba(139, 92, 246, 0.2);">📝</div>
+                            <div>
+                                <h3 style="font-size: 1.05rem; font-weight: 600; color: var(--text-primary);">Smart Text Summarizer</h3>
+                                <p style="font-size: 0.8rem; color: var(--text-secondary);">Synthesize long texts, articles, or transcripts into structured bullet points.</p>
+                            </div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 0.75rem; background: rgba(0,0,0,0.15); padding: 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.03);">
+                            <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+                                <label style="font-size: 0.8rem; font-weight: 500; color: var(--text-secondary);">Input Text to Summarize:</label>
+                                <textarea id="summarizeText" placeholder="Paste your article or notes here..." style="height: 100px; font-size: 0.85rem; width: 100%; border-radius: 8px; padding: 0.5rem; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); color: var(--text-primary); resize: none; outline: none; transition: border-color 0.3s;"></textarea>
+                            </div>
+                            <div style="display: flex; gap: 1rem; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <span style="font-size: 0.8rem; color: var(--text-secondary);">Max Words:</span>
+                                    <input type="number" id="summarizeMax" value="200" style="width: 80px; background: rgba(255,255,255,0.05); border: 1px solid var(--border-color); color: #FFF; padding: 0.3rem 0.5rem; border-radius: 6px; font-size: 0.8rem; text-align: center; outline: none;">
+                                </div>
+                                <button id="summarizeSubmit" class="send-btn" style="height: 38px; padding: 0 1.25rem; font-size: 0.85rem; background: linear-gradient(135deg, var(--accent-violet), #7C3AED);">Generate Summary</button>
+                            </div>
+                        </div>
+                        <div id="summarizeResultContainer" style="display: none; flex-direction: column; gap: 0.5rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: var(--text-secondary);">
+                                <span>Summary Output:</span>
+                                <span id="summarizeMeta" style="color: var(--accent-emerald); font-weight: 500;"></span>
+                            </div>
+                            <div id="summarizeResult" style="font-size: 0.9rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; color: #E5E7EB; line-height: 1.6; max-height: 250px; overflow-y: auto;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Translation Card -->
+                    <div class="plugin-card" style="background: rgba(255, 255, 255, 0.02); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <div style="font-size: 1.8rem; background: rgba(244, 63, 94, 0.1); width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 8px; border: 1px solid rgba(244, 63, 94, 0.2);">🌐</div>
+                            <div>
+                                <h3 style="font-size: 1.05rem; font-weight: 600; color: var(--text-primary);">Universal Translator</h3>
+                                <p style="font-size: 0.8rem; color: var(--text-secondary);">Translate any text naturally while retaining original formatting.</p>
+                            </div>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 0.75rem; background: rgba(0,0,0,0.15); padding: 1rem; border-radius: 8px; border: 1px solid rgba(255,255,255,0.03);">
+                            <div style="display: flex; flex-direction: column; gap: 0.35rem;">
+                                <label style="font-size: 0.8rem; font-weight: 500; color: var(--text-secondary);">Source Text:</label>
+                                <textarea id="translateText" placeholder="Enter text to translate..." style="height: 80px; font-size: 0.85rem; width: 100%; border-radius: 8px; padding: 0.5rem; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); color: var(--text-primary); resize: none; outline: none; transition: border-color 0.3s;"></textarea>
+                            </div>
+                            <div style="display: flex; gap: 1rem; align-items: center; justify-content: space-between; flex-wrap: wrap;">
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <span style="font-size: 0.8rem; color: var(--text-secondary);">Target Language:</span>
+                                    <select id="translateLang">
+                                        <option value="Chinese">Chinese (中文)</option>
+                                        <option value="English">English</option>
+                                        <option value="Spanish">Spanish</option>
+                                        <option value="Japanese">Japanese</option>
+                                        <option value="German">German</option>
+                                        <option value="French">French</option>
+                                    </select>
+                                </div>
+                                <button id="translateSubmit" class="send-btn" style="height: 38px; padding: 0 1.25rem; font-size: 0.85rem; background: linear-gradient(135deg, var(--accent-rose), #E11D48);">Translate</button>
+                            </div>
+                        </div>
+                        <div id="translateResultContainer" style="display: none; flex-direction: column; gap: 0.5rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: var(--text-secondary);">
+                                <span>Translation Output:</span>
+                                <span id="translateMeta" style="color: var(--accent-emerald); font-weight: 500;"></span>
+                            </div>
+                            <div id="translateResult" style="font-size: 0.9rem; background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; color: #E5E7EB; line-height: 1.6; max-height: 250px; overflow-y: auto;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Future Expansion Placeholder Card -->
+                    <div class="plugin-card" style="background: rgba(255, 255, 255, 0.01); border: 1px dashed rgba(255, 255, 255, 0.15); border-radius: 12px; padding: 1.5rem; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 0.5rem; text-align: center; opacity: 0.6;">
+                        <div style="font-size: 2.2rem; filter: grayscale(1);">🎨</div>
+                        <h4 style="font-size: 1rem; font-weight: 600; color: var(--text-secondary);">Add More Plugins</h4>
+                        <p style="font-size: 0.75rem; color: var(--text-secondary); max-width: 320px;">Easily register any new AI capabilities (like Speech-to-Text or Sentiment Analyzers) to this hub.</p>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -949,6 +1081,224 @@
         paramSlider.addEventListener('input', () => {
             const val = parseFloat(paramSlider.value);
             paramVal.innerText = val.toFixed(2);
+        });
+
+        // Tab Switchers
+        const tabChat = document.getElementById('tabChat');
+        const tabPlugins = document.getElementById('tabPlugins');
+        const chatTabContent = document.getElementById('chatTabContent');
+        const pluginsTabContent = document.getElementById('pluginsTabContent');
+
+        tabChat.addEventListener('click', () => {
+            tabChat.classList.add('active');
+            tabChat.style.borderBottomColor = 'var(--accent-violet)';
+            tabChat.style.color = 'var(--text-primary)';
+            
+            tabPlugins.classList.remove('active');
+            tabPlugins.style.borderBottomColor = 'transparent';
+            tabPlugins.style.color = 'var(--text-secondary)';
+            
+            chatTabContent.style.display = 'flex';
+            pluginsTabContent.style.display = 'none';
+        });
+
+        tabPlugins.addEventListener('click', () => {
+            tabPlugins.classList.add('active');
+            tabPlugins.style.borderBottomColor = 'var(--accent-violet)';
+            tabPlugins.style.color = 'var(--text-primary)';
+            
+            tabChat.classList.remove('active');
+            tabChat.style.borderBottomColor = 'transparent';
+            tabChat.style.color = 'var(--text-secondary)';
+            
+            chatTabContent.style.display = 'none';
+            pluginsTabContent.style.display = 'flex';
+        });
+
+        // OCR Submit Handler
+        const ocrSubmit = document.getElementById('ocrSubmit');
+        ocrSubmit.addEventListener('click', async () => {
+            const fileInput = document.getElementById('ocrFile');
+            const langSelect = document.getElementById('ocrLang');
+            const resultContainer = document.getElementById('ocrResultContainer');
+            const resultPre = document.getElementById('ocrResult');
+            const metaSpan = document.getElementById('ocrMeta');
+
+            if (!fileInput.files.length) {
+                alert("Please select an image file first.");
+                return;
+            }
+
+            ocrSubmit.innerText = "Processing...";
+            ocrSubmit.disabled = true;
+            resultContainer.style.display = 'none';
+
+            const formData = new FormData();
+            formData.append("image", fileInput.files[0]);
+            formData.append("language", langSelect.value);
+
+            try {
+                resetPipeline();
+                activateStep('stepInput', 'success');
+                activateStep('stepCache', 'active');
+
+                const authHeader = `sk-inferroute-demo`;
+                const userKey = apiKeyInput.value.trim() || authHeader;
+
+                const res = await fetch('/v1/plugins/ocr', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${userKey}` },
+                    body: formData
+                });
+
+                if (!res.ok) {
+                    const errorMsg = await res.text();
+                    throw new Error(errorMsg || "OCR server error");
+                }
+
+                const data = await res.json();
+                resultContainer.style.display = 'flex';
+                resultPre.innerText = data.extracted_text;
+                metaSpan.innerText = `⏱️ ${data.latency_ms} ms | Cost: $${data.estimated_cost_usd.toFixed(5)}`;
+                
+                activateStep('stepCache', 'success', 'Bypassed Cache');
+                activateStep('stepLimit', 'success');
+                activateStep('stepExecute', 'success', 'Gemini Multi-Modal Done');
+                activateStep('stepValidate', 'success');
+                activateStep('stepCascade', 'success', 'OCR Completed');
+
+                sessionTotalRequests++;
+                updateDashboardUI(data.latency_ms, data.latency_ms, false, 'gemini-1.5-flash');
+                setTimeout(fetchWalletBalance, 500);
+
+            } catch (err) {
+                alert("OCR Failed: " + err.message);
+            } finally {
+                ocrSubmit.innerText = "Extract Text";
+                ocrSubmit.disabled = false;
+            }
+        });
+
+        // Summarize Handler
+        const summarizeSubmit = document.getElementById('summarizeSubmit');
+        summarizeSubmit.addEventListener('click', async () => {
+            const textVal = document.getElementById('summarizeText').value.trim();
+            const maxWords = document.getElementById('summarizeMax').value;
+            const resultContainer = document.getElementById('summarizeResultContainer');
+            const resultDiv = document.getElementById('summarizeResult');
+            const metaSpan = document.getElementById('summarizeMeta');
+
+            if (!textVal) {
+                alert("Please enter some text to summarize.");
+                return;
+            }
+
+            summarizeSubmit.innerText = "Summarizing...";
+            summarizeSubmit.disabled = true;
+            resultContainer.style.display = 'none';
+
+            const formData = new FormData();
+            formData.append("text", textVal);
+            formData.append("max_length", maxWords);
+
+            try {
+                resetPipeline();
+                activateStep('stepInput', 'success');
+                activateStep('stepCache', 'active');
+
+                const authHeader = `sk-inferroute-demo`;
+                const userKey = apiKeyInput.value.trim() || authHeader;
+
+                const res = await fetch('/v1/plugins/summarize', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${userKey}` },
+                    body: formData
+                });
+
+                if (!res.ok) throw new Error("Summarization failed");
+
+                const data = await res.json();
+                resultContainer.style.display = 'flex';
+                resultDiv.innerText = data.summary;
+                metaSpan.innerText = `⏱️ ${data.latency_ms} ms | Cost: $${data.estimated_cost_usd.toFixed(5)}`;
+
+                activateStep('stepCache', 'success');
+                activateStep('stepLimit', 'success');
+                activateStep('stepExecute', 'success', 'Gemini Summarized');
+                activateStep('stepValidate', 'success');
+                activateStep('stepCascade', 'success');
+
+                sessionTotalRequests++;
+                updateDashboardUI(data.latency_ms, data.latency_ms, false, 'gemini-1.5-flash');
+                setTimeout(fetchWalletBalance, 500);
+
+            } catch (err) {
+                alert("Summarization failed: " + err.message);
+            } finally {
+                summarizeSubmit.innerText = "Generate Summary";
+                summarizeSubmit.disabled = false;
+            }
+        });
+
+        // Translate Handler
+        const translateSubmit = document.getElementById('translateSubmit');
+        translateSubmit.addEventListener('click', async () => {
+            const textVal = document.getElementById('translateText').value.trim();
+            const targetLang = document.getElementById('translateLang').value;
+            const resultContainer = document.getElementById('translateResultContainer');
+            const resultDiv = document.getElementById('translateResult');
+            const metaSpan = document.getElementById('translateMeta');
+
+            if (!textVal) {
+                alert("Please enter text to translate.");
+                return;
+            }
+
+            translateSubmit.innerText = "Translating...";
+            translateSubmit.disabled = true;
+            resultContainer.style.display = 'none';
+
+            const formData = new FormData();
+            formData.append("text", textVal);
+            formData.append("target_lang", targetLang);
+
+            try {
+                resetPipeline();
+                activateStep('stepInput', 'success');
+                activateStep('stepCache', 'active');
+
+                const authHeader = `sk-inferroute-demo`;
+                const userKey = apiKeyInput.value.trim() || authHeader;
+
+                const res = await fetch('/v1/plugins/translate', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${userKey}` },
+                    body: formData
+                });
+
+                if (!res.ok) throw new Error("Translation failed");
+
+                const data = await res.json();
+                resultContainer.style.display = 'flex';
+                resultDiv.innerText = data.translated_text;
+                metaSpan.innerText = `⏱️ ${data.latency_ms} ms | Cost: $${data.estimated_cost_usd.toFixed(5)}`;
+
+                activateStep('stepCache', 'success');
+                activateStep('stepLimit', 'success');
+                activateStep('stepExecute', 'success', 'Gemini Translated');
+                activateStep('stepValidate', 'success');
+                activateStep('stepCascade', 'success');
+
+                sessionTotalRequests++;
+                updateDashboardUI(data.latency_ms, data.latency_ms, false, 'gemini-1.5-flash');
+                setTimeout(fetchWalletBalance, 500);
+
+            } catch (err) {
+                alert("Translation failed: " + err.message);
+            } finally {
+                translateSubmit.innerText = "Translate";
+                translateSubmit.disabled = false;
+            }
         });
 
         // Event hooks

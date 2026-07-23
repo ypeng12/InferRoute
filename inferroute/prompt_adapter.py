@@ -94,6 +94,7 @@ def adapt_prompt(messages: list[dict[str, str]], target_backend: str) -> list[di
             compressed_content = compress_few_shot_examples(content, max_examples=1)
             adapted_messages.append({"role": role, "content": compressed_content})
         else:
+            adapted_messages.append({"role": role, "content": content})
     return adapted_messages
 
 
