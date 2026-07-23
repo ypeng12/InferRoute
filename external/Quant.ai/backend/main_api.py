@@ -1507,6 +1507,57 @@ def close_all_positions():
         return {"success": False, "error": str(e)}
 
 
+class OrderRequest(BaseModel):
+    symbol: str
+    qty: int = 1
+    side: str = "buy"
+
+@app.post("/api/broker/order")
+@app.post("/api/agent/trade")
+def submit_stock_order(request: OrderRequest):
+    """
+    AI 炒股大模型下单接口：直接向 Alpaca 券商或模拟盘提交买卖单
+    """
+    from app.config import ALPACA_API_KEY, ALPACA_SECRET_KEY, ALPACA_BASE_URL
+    from app.broker.alpaca_adapter import AlpacaAdapter
+    import uuid
+    import yfinance as yf
+    
+    symbol = request.symbol.upper()
+    qty = max(1, request.qty)
+    side = request.side.lower()
+    
+    try:
+        if ALPACA_API_KEY and "PK" in ALPACA_API_KEY:
+            adapter = AlpacaAdapter(ALPACA_API_KEY, ALPACA_SECRET_KEY, ALPACA_BASE_URL)
+            res = adapter.submit_market_order(symbol, qty, side)
+            live_runner.add_log(f"🤖 AI 下单触发：[{side.upper()}] {symbol} {qty}股。结果: {res.get('message')}")
+            return res
+        else:
+            ticker_data = yf.Ticker(symbol).fast_info
+            current_price = float(getattr(ticker_data, 'last_price', 0.0) or getattr(ticker_data, 'previous_close', 200.0))
+            order_id = f"mock_{uuid.uuid4().hex[:8]}"
+            total_value = round(current_price * qty, 2)
+            
+            log_msg = f"🤖 [AI 托管下单成功] [{side.upper()}] {symbol} {qty} 股，成交均价: ${current_price:.2f}，总金额: ${total_value:.2f} (订单ID: {order_id})"
+            live_runner.add_log(log_msg)
+            
+            return {
+                "success": True,
+                "mock": True,
+                "order_id": order_id,
+                "symbol": symbol,
+                "side": side.upper(),
+                "qty": qty,
+                "filled_avg_price": round(current_price, 2),
+                "total_cost": total_value,
+                "status": "filled",
+                "message": log_msg
+            }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
 # 静态文件托管（前端 React 构建产物）
 _backend_dir = os.path.dirname(os.path.abspath(__file__))
 _dist_dir = os.path.join(os.path.dirname(_backend_dir), "frontend", "dist")
