@@ -657,10 +657,10 @@ function App() {
                 <div className="pnl-header-container">
                   <div>
                     <div className="portfolio-value">
-                      ${data.summary.final_equity.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      ${(data.summary?.final_equity ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
                     <div className={`pnl-text ${pnlColorClass}`}>
-                      {pnlSign}${data.summary.net_pnl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({pnlSign}{data.summary.pnl_pct.toFixed(2)}%)
+                      {pnlSign}${(data.summary?.net_pnl ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({pnlSign}${(data.summary?.pnl_pct ?? 0).toFixed(2)}%)
                     </div>
                   </div>
                   

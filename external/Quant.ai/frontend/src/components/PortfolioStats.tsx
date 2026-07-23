@@ -25,15 +25,20 @@ interface PortfolioStatsProps {
 }
 
 export const PortfolioStats: React.FC<PortfolioStatsProps> = ({ summary }) => {
-  const isUp = summary.net_pnl >= 0;
+  const isUp = (summary?.net_pnl ?? 0) >= 0;
   const pnlColor = isUp ? 'var(--color-green)' : 'var(--color-red)';
   const pnlSign = isUp ? '+' : '';
 
-  const sharpe = summary.sharpe ?? 0;
-  const calmar = summary.calmar ?? 0;
-  const cagr = summary.cagr ?? 0;
-  const profitFactor = summary.profit_factor ?? 0;
-  const maxDD = (summary.max_drawdown ?? 0) * 100;
+  const initialCash = summary?.initial_cash ?? 0;
+  const finalEquity = summary?.final_equity ?? 0;
+  const netPnl = summary?.net_pnl ?? 0;
+  const pnlPct = summary?.pnl_pct ?? 0;
+
+  const sharpe = summary?.sharpe ?? 0;
+  const calmar = summary?.calmar ?? 0;
+  const cagr = summary?.cagr ?? 0;
+  const profitFactor = summary?.profit_factor ?? 0;
+  const maxDD = (summary?.max_drawdown ?? 0) * 100;
 
   const sharpeColor = sharpe > 1 ? 'var(--color-green)' : sharpe > 0 ? '#f5a623' : 'var(--color-red)';
   const calmarColor = calmar > 1 ? 'var(--color-green)' : calmar > 0 ? '#f5a623' : 'var(--color-red)';
@@ -47,18 +52,18 @@ export const PortfolioStats: React.FC<PortfolioStatsProps> = ({ summary }) => {
       <div className="stats-grid">
         <div className="stat-box">
           <span className="stat-label">Initial Capital</span>
-          <span className="stat-value">${summary.initial_cash.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
+          <span className="stat-value">${initialCash.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</span>
         </div>
         
         <div className="stat-box">
           <span className="stat-label">Final Equity</span>
-          <span className="stat-value">${summary.final_equity.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          <span className="stat-value">${finalEquity.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>
 
         <div className="stat-box">
           <span className="stat-label">Net PnL</span>
           <span className="stat-value" style={{ color: pnlColor }}>
-            {pnlSign}${summary.net_pnl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({pnlSign}{summary.pnl_pct.toFixed(2)}%)
+            {pnlSign}${netPnl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({pnlSign}{pnlPct.toFixed(2)}%)
           </span>
         </div>
 
