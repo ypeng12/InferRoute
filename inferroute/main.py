@@ -106,6 +106,7 @@ app = FastAPI(
 )
 
 import os
+import sys
 from fastapi.staticfiles import StaticFiles
 from inferroute import plugins
 
@@ -114,6 +115,39 @@ if os.path.exists(static_dir):
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 app.include_router(plugins.router)
+
+# ── Quant.ai Integration ──────────────────────────────────────────────────────
+quant_backend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "external", "Quant.ai", "backend")
+if os.path.exists(quant_backend_dir):
+    if quant_backend_dir not in sys.path:
+        sys.path.insert(0, quant_backend_dir)
+    try:
+        import main_api as quant_main_api
+        app.include_router(quant_main_api.app.router)
+        logger.info("Quant.ai API routes registered successfully.")
+    except Exception as e:
+        logger.warning(f"Failed to load Quant.ai backend: {e}")
+
+quant_dist_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "external", "Quant.ai", "frontend", "dist")
+if os.path.exists(quant_dist_dir):
+    quant_assets = os.path.join(quant_dist_dir, "assets")
+    if os.path.exists(quant_assets):
+        app.mount("/quant/assets", StaticFiles(directory=quant_assets), name="quant_assets")
+        app.mount("/assets", StaticFiles(directory=quant_assets), name="assets")
+
+    @app.get("/quant", response_class=HTMLResponse)
+    @app.get("/quant/{full_path:path}", response_class=HTMLResponse)
+    async def get_quant_page(full_path: str = ""):
+        target = os.path.join(quant_dist_dir, full_path)
+        if full_path and os.path.exists(target) and os.path.isfile(target):
+            with open(target, "rb") as f:
+                return Response(content=f.read())
+        index_path = os.path.join(quant_dist_dir, "index.html")
+        if os.path.exists(index_path):
+            with open(index_path, "r", encoding="utf-8") as f:
+                return f.read()
+        return "<h1>Quant.ai UI Not Found</h1>"
+
 
 
 @app.get("/platform", response_class=HTMLResponse)

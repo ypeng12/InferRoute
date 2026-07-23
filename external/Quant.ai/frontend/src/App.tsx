@@ -17,6 +17,7 @@ import { WalkForwardPanel } from './components/WalkForwardPanel';
 import { ExperimentCompare } from './components/ExperimentCompare';
 import { BrokerPanel } from './components/BrokerPanel';
 import { SameDayReplayPanel } from './components/SameDayReplayPanel';
+import { API_BASE } from './config';
 
 interface SummaryData {
   initial_cash: number;
@@ -185,7 +186,7 @@ function App() {
     const runAiTuning = async () => {
       setTuningLoading(true);
       try {
-        const response = await fetch('http://127.0.0.1:8000/api/ai_tune', {
+        const response = await fetch(`${API_BASE}/api/ai_tune`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -236,7 +237,7 @@ function App() {
           market_open_focus: String(strategyParams.market_open_focus)
         });
 
-        const res = await fetch(`http://127.0.0.1:8000/api/backtest?${queryParams.toString()}`);
+        const res = await fetch(`${API_BASE}/api/backtest?${queryParams.toString()}`);
         const json: BacktestResponse = await res.json();
         
         if (json.success) {
@@ -270,7 +271,7 @@ function App() {
     const fetchCompanyDetails = async () => {
       setInfoLoading(true);
       try {
-        const res = await fetch(`http://127.0.0.1:8000/api/company_info?ticker=${activeTicker}`);
+        const res = await fetch(`${API_BASE}/api/company_info?ticker=${activeTicker}`);
         const json = await res.json();
         setCompanyInfo(json);
       } catch (e) {
@@ -289,7 +290,7 @@ function App() {
       for (const ticker of watchlist) {
         if (ticker === activeTicker) continue;
         try {
-          const res = await fetch(`http://127.0.0.1:8000/api/backtest?ticker=${ticker}&interval=1d`);
+          const res = await fetch(`${API_BASE}/api/backtest?ticker=${ticker}&interval=1d`);
           const json: BacktestResponse = await res.json();
           if (json.success && json.candles.length > 0) {
             const lastCandle = json.candles[json.candles.length - 1];
@@ -331,7 +332,7 @@ function App() {
     if (activeTab === 'replay') {
       const fetchDates = async () => {
         try {
-          const res = await fetch(`http://127.0.0.1:8000/api/replay/available_dates?ticker=${activeTicker}`);
+          const res = await fetch(`${API_BASE}/api/replay/available_dates?ticker=${activeTicker}`);
           const json = await res.json();
           if (json.success && json.dates.length > 0) {
             setAvailableDates(json.dates);
@@ -368,7 +369,7 @@ function App() {
         slippage_rate: String(strategyParams.slippage_rate),
         market_open_focus: String(strategyParams.market_open_focus),
       });
-      const res = await fetch(`http://127.0.0.1:8000/api/replay/data?${params.toString()}`);
+      const res = await fetch(`${API_BASE}/api/replay/data?${params.toString()}`);
       const json = await res.json();
       if (json.success) {
         setReplayData(json);
@@ -420,7 +421,7 @@ function App() {
       setZoomCandles([]);
       try {
         const dateStr = item.timestamp.split(' ')[0]; // YYYY-MM-DD
-        const res = await fetch(`http://127.0.0.1:8000/api/intraday_data?ticker=${item.ticker}&date=${dateStr}`);
+        const res = await fetch(`${API_BASE}/api/intraday_data?ticker=${item.ticker}&date=${dateStr}`);
         const json = await res.json();
         if (json.success) {
           setZoomCandles(json.candles);
@@ -828,7 +829,7 @@ function App() {
               </>
             ) : (
               <div className="loader-container">
-                Cannot connect to backend. Please ensure FastAPI is running on http://127.0.0.1:8000
+                Cannot connect to backend API server ({API_BASE}). Please ensure backend service is running.
               </div>
             )
           )}

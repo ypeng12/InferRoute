@@ -1,3 +1,12 @@
+---
+title: Quant AI - Advanced Quant Trading Engine & Backtest Simulator
+emoji: 📈
+colorFrom: blue
+colorTo: indigo
+sdk: static
+pinned: false
+---
+
 # Quant.ai - Advanced Quant Trading Engine & Backtest Simulator
 
 <p align="center">
