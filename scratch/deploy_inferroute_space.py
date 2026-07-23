@@ -10,7 +10,7 @@ try:
     url = create_repo(
         repo_id=repo_id,
         repo_type="space",
-        space_sdk="static",
+        space_sdk="docker",
         private=False,
         exist_ok=True
     )
