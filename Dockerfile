@@ -30,6 +30,8 @@ COPY inferroute/ ./inferroute/
 COPY docs/ ./docs/
 COPY benchmarks/ ./benchmarks/
 COPY external/ ./external/
+COPY *.html ./
+COPY assets/ ./assets/
 
 # Expose default port (7860 for Hugging Face Spaces)
 EXPOSE 7860

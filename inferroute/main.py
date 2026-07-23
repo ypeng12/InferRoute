@@ -150,8 +150,22 @@ if os.path.exists(quant_dist_dir):
 
 
 
+@app.get("/quant.html", response_class=HTMLResponse)
+async def get_quant_html_page():
+    root_quant = os.path.join(os.path.dirname(os.path.dirname(__file__)), "quant.html")
+    if os.path.exists(root_quant):
+        with open(root_quant, "r", encoding="utf-8") as f:
+            return f.read()
+    return await get_quant_page("")
+
+
 @app.get("/platform", response_class=HTMLResponse)
+@app.get("/platform.html", response_class=HTMLResponse)
 async def get_platform_page():
+    root_platform = os.path.join(os.path.dirname(os.path.dirname(__file__)), "platform.html")
+    if os.path.exists(root_platform):
+        with open(root_platform, "r", encoding="utf-8") as f:
+            return f.read()
     template_path = os.path.join(os.path.dirname(__file__), "templates", "platform.html")
     if os.path.exists(template_path):
         with open(template_path, "r", encoding="utf-8") as f:
@@ -413,9 +427,13 @@ async def list_providers():
 
 
 @app.get("/", response_class=HTMLResponse, tags=["ui"])
+@app.get("/index.html", response_class=HTMLResponse, tags=["ui"])
 async def get_playground():
-    """Serves the interactive playground UI."""
-    import os
+    """Serves the interactive gateway hub / playground UI."""
+    root_index = os.path.join(os.path.dirname(os.path.dirname(__file__)), "index.html")
+    if os.path.exists(root_index):
+        with open(root_index, "r", encoding="utf-8") as f:
+            return f.read()
     template_path = os.path.join(os.path.dirname(__file__), "templates", "playground.html")
     if not os.path.exists(template_path):
         raise HTTPException(status_code=404, detail="Playground UI template not found")

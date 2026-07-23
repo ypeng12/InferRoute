@@ -76,16 +76,16 @@
             <span>🚀 InferRoute & Quant.ai Hub</span>
         </div>
         <div class="tabs">
-            <button class="tab-btn active" onclick="switchTab('quant')">
-                <span>📈</span> Quant.ai Trading Terminal
-            </button>
-            <button class="tab-btn" onclick="switchTab('platform')">
+            <button class="tab-btn active" onclick="switchTab('platform')">
                 <span>🌐</span> InferRoute LLM Gateway
+            </button>
+            <button class="tab-btn" onclick="switchTab('quant')">
+                <span>📈</span> Quant.ai Trading Terminal
             </button>
         </div>
     </div>
 
-    <iframe id="mainFrame" class="content-frame" src="quant.html"></iframe>
+    <iframe id="mainFrame" class="content-frame" src="platform.html"></iframe>
 
     <script>
         function switchTab(tab) {
@@ -94,11 +94,11 @@
             
             btns.forEach(btn => btn.classList.remove('active'));
 
-            if (tab === 'quant') {
-                frame.src = 'quant.html';
+            if (tab === 'platform') {
+                frame.src = 'platform.html';
                 btns[0].classList.add('active');
             } else {
-                frame.src = 'platform.html';
+                frame.src = 'quant.html';
                 btns[1].classList.add('active');
             }
         }
