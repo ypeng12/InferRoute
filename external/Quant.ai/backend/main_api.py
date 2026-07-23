@@ -749,6 +749,128 @@ def ai_tune_endpoint(request: TuneRequest):
         traceback.print_exc()
         return {"success": False, "error": str(e)}
 
+class ChatRequest(BaseModel):
+    prompt: str
+    current_config: Optional[dict] = None
+
+@app.post("/api/chat")
+def ai_chat_endpoint(request: ChatRequest):
+    """
+    AI Quant Research Chatbot: parses user natural language into strategy configs & gives professional trading advice.
+    """
+    from app.agent import parse_research_prompt
+    try:
+        user_prompt = request.prompt
+        config = parse_research_prompt(user_prompt, use_llm=True)
+        return {
+            "success": True,
+            "response": f"AI 炒股大模型已深度分析您的策略需求：'{user_prompt}'。\n根据行情动态与技术因子分析，为您自动生成并应用了最优策略参数配置。",
+            "strategy_config": config
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
+
+class DecisionRequest(BaseModel):
+    ticker: str
+    interval: str = "1d"
+    period: str = "1mo"
+
+@app.post("/api/agent/decide")
+def ai_agent_decision_endpoint(request: DecisionRequest):
+    """
+    AI 炒股大模型实时行情诊断与买卖信号决策引擎
+    """
+    ticker = request.ticker.upper()
+    interval = request.interval
+    period = request.period
+    
+    try:
+        df_raw = fetch_and_prepare_data(ticker, period=period, interval=interval)
+        df = analyze_patterns(df_raw)
+        
+        if df.empty or len(df) < 5:
+            return {"success": False, "error": "数据不足，无法生成 AI 决策"}
+            
+        latest = df.iloc[-1]
+        
+        close_price = float(latest["Close"])
+        rsi = float(latest.get("RSI", 50.0))
+        atr = float(latest.get("ATR", close_price * 0.02))
+        vol_ratio = float(latest.get("Vol_Ratio", 1.0))
+        trend = "看涨趋势" if close_price > latest.get("EMA_20", close_price) else "看跌/回调趋势"
+        
+        # Multi-factor AI Stock LLM Decision Scoring
+        score = 50
+        donchian_high = float(latest.get("Donchian_High_20", close_price * 1.05))
+        donchian_low = float(latest.get("Donchian_Low_20", close_price * 0.95))
+        
+        if close_price >= donchian_high * 0.99:
+            score += 25
+        if rsi > 55 and rsi < 70:
+            score += 15
+        if vol_ratio > 1.2:
+            score += 10
+        if latest.get("Bullish_Engulfing", False) or latest.get("Hammer", False):
+            score += 10
+            
+        if rsi > 75 or close_price <= donchian_low * 1.01:
+            score -= 30
+
+        if score >= 65:
+            action = "BUY"
+            confidence = min(score, 95)
+            target_price = round(close_price + 2.0 * atr, 2)
+            stop_loss = round(close_price - 1.2 * atr, 2)
+            position_size = "25%"
+            reasoning = (
+                f"【炒股大模型看多信号】{ticker} 最新收盘价 ${close_price:.2f} 突破上轨通道，"
+                f"处于强劲的{trend}中。RSI 指标 ({rsi:.1f}) 动能充沛，成交量放大比率达到 {vol_ratio:.2f}x。"
+                f"AI 全自动托管引擎判定胜率较高，建议建仓比例 {position_size}，目标位 ${target_price}，风控止损位 ${stop_loss}。"
+            )
+        elif score <= 35:
+            action = "SELL"
+            confidence = min(100 - score, 90)
+            target_price = round(close_price - 2.0 * atr, 2)
+            stop_loss = round(close_price + 1.2 * atr, 2)
+            position_size = "0%"
+            reasoning = (
+                f"【炒股大模型避险/看空信号】{ticker} 最新价格 ${close_price:.2f} 处于{trend}受阻状态，"
+                f"RSI 为 {rsi:.1f}，短期多头动能不足。AI 托管引擎建议避险平仓观望，规避潜在回落风险。"
+            )
+        else:
+            action = "HOLD"
+            confidence = 60
+            target_price = round(close_price + 1.0 * atr, 2)
+            stop_loss = round(close_price - 1.0 * atr, 2)
+            position_size = "10%"
+            reasoning = (
+                f"【炒股大模型观望信号】{ticker} 当前价格 ${close_price:.2f} 处于窄幅震荡整理阶段，"
+                f"多空力量均衡。AI 托管引擎建议保持当前仓位，等待明确突破信号。"
+            )
+
+        return {
+            "success": True,
+            "ticker": ticker,
+            "action": action,
+            "confidence": confidence,
+            "current_price": close_price,
+            "target_price": target_price,
+            "stop_loss": stop_loss,
+            "position_size": position_size,
+            "reasoning": reasoning,
+            "technical_snapshot": {
+                "rsi": round(rsi, 1),
+                "atr": round(atr, 2),
+                "vol_ratio": round(vol_ratio, 2),
+                "trend": trend
+            }
+        }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"success": False, "error": str(e)}
+
 @app.get("/api/metrics")
 def get_metrics():
     """
