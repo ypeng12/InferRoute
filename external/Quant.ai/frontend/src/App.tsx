@@ -491,25 +491,54 @@ function App() {
 
   const liveStats = getLiveReplayStats();
 
+  // 加载初始 Watchlist (支持后端持久化)
+  useEffect(() => {
+    const fetchWatchlist = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/watchlist`);
+        const json = await res.json();
+        if (json.watchlist && json.watchlist.length > 0) {
+          setWatchlist(json.watchlist);
+        }
+      } catch (e) {}
+    };
+    fetchWatchlist();
+  }, []);
+
   // 添加自选股
-  const handleAddTicker = (e: React.FormEvent) => {
+  const handleAddTicker = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanTicker = newTickerInput.trim().toUpperCase();
     if (cleanTicker && !watchlist.includes(cleanTicker)) {
-      setWatchlist([...watchlist, cleanTicker]);
+      const newWatchlist = [...watchlist, cleanTicker];
+      setWatchlist(newWatchlist);
       setActiveTicker(cleanTicker);
       setNewTickerInput('');
+      try {
+        await fetch(`${API_BASE}/api/watchlist/add`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ticker: cleanTicker })
+        });
+      } catch (err) {}
     }
   };
 
   // 删除自选股
-  const handleRemoveTicker = (tickerToRemove: string, e: React.MouseEvent) => {
+  const handleRemoveTicker = async (tickerToRemove: string, e: React.MouseEvent) => {
     e.stopPropagation();
     const newWatchlist = watchlist.filter(t => t !== tickerToRemove);
     setWatchlist(newWatchlist);
     if (activeTicker === tickerToRemove && newWatchlist.length > 0) {
       setActiveTicker(newWatchlist[0]);
     }
+    try {
+      await fetch(`${API_BASE}/api/watchlist/delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticker: tickerToRemove })
+      });
+    } catch (err) {}
   };
 
   const resetStrategyParams = () => {

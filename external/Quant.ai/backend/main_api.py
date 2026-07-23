@@ -76,12 +76,60 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+WATCHLIST_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "watchlist.json")
+
+def load_persistent_watchlist() -> list:
+    if os.path.exists(WATCHLIST_FILE):
+        try:
+            with open(WATCHLIST_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, list) and len(data) > 0:
+                    return [str(t).upper() for t in data]
+        except Exception:
+            pass
+    return ["TSLA", "NVDA", "AAPL", "MSFT", "AMD"]
+
+def save_persistent_watchlist(watchlist: list):
+    try:
+        with open(WATCHLIST_FILE, "w", encoding="utf-8") as f:
+            json.dump(watchlist, f, indent=2)
+    except Exception as e:
+        pass
+
+WATCHLIST = load_persistent_watchlist()
+live_runner.active_tickers = WATCHLIST.copy()
+
+
+class WatchlistModifyRequest(BaseModel):
+    ticker: str
+
 @app.get("/api/watchlist")
 def get_watchlist_data():
     """
-    获取自选股池的列表
+    获取自选股池的列表（支持持久化）
     """
     return {"watchlist": WATCHLIST}
+
+@app.post("/api/watchlist/add")
+def add_watchlist_ticker(req: WatchlistModifyRequest):
+    ticker = req.ticker.strip().upper()
+    if not ticker:
+        return {"success": False, "error": "无效股票代码"}
+    if ticker not in WATCHLIST:
+        WATCHLIST.append(ticker)
+        save_persistent_watchlist(WATCHLIST)
+        live_runner.active_tickers = WATCHLIST.copy()
+    return {"success": True, "watchlist": WATCHLIST, "message": f"已添加 {ticker} 至监控列表"}
+
+@app.post("/api/watchlist/delete")
+@app.delete("/api/watchlist/delete")
+def delete_watchlist_ticker(req: WatchlistModifyRequest):
+    ticker = req.ticker.strip().upper()
+    if ticker in WATCHLIST:
+        WATCHLIST.remove(ticker)
+        save_persistent_watchlist(WATCHLIST)
+        live_runner.active_tickers = WATCHLIST.copy()
+    return {"success": True, "watchlist": WATCHLIST, "message": f"已从监控列表移除 {ticker}"}
 
 @app.get("/api/company_info")
 def get_company_details(ticker: str):
