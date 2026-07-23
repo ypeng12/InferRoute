@@ -23,9 +23,22 @@ interface BrokerPosition {
   unrealized_pnl_pct: number;
 }
 
+interface BrokerOrder {
+  order_id: string;
+  symbol: string;
+  qty: number;
+  side: string;
+  type: string;
+  status: string;
+  submitted_at: string;
+  filled_at: string | null;
+  filled_avg_price: number;
+}
+
 export function BrokerPanel() {
   const [account, setAccount] = useState<AccountSummary | null>(null);
   const [positions, setPositions] = useState<BrokerPosition[]>([]);
+  const [orders, setOrders] = useState<BrokerOrder[]>([]);
   const [isBotRunning, setIsBotRunning] = useState<boolean>(false);
   const [logs, setLogs] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -52,7 +65,14 @@ export function BrokerPanel() {
         setPositions(posJson.positions);
       }
 
-      // 3. Fetch bot status and logs
+      // 3. Fetch order history
+      const orderRes = await fetch(`${API_BASE}/api/broker/orders`);
+      const orderJson = await orderRes.json();
+      if (orderJson.success && orderJson.orders) {
+        setOrders(orderJson.orders);
+      }
+
+      // 4. Fetch bot status and logs
       const statusRes = await fetch(`${API_BASE}/api/live/status`);
       const statusJson = await statusRes.json();
       if (statusJson.success) {
@@ -399,6 +419,90 @@ export function BrokerPanel() {
           </div>
         </div>
 
+      </div>
+
+      {/* 📜 AI 炒股大模型下单与交易历史记录 */}
+      <div className="card" style={{ marginTop: '1.5rem', padding: '1.25rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#ffffff' }}>
+            📜 AI 下单与交易历史账单 (Alpaca Broker Orders Ledger)
+          </h3>
+          <span style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)' }}>
+            实时同步最近 {orders.length} 笔订单记录
+          </span>
+        </div>
+
+        {orders.length === 0 ? (
+          <div style={{ textAlign: 'center', color: 'var(--color-text-secondary)', padding: '2rem 0', fontSize: '0.85rem' }}>
+            暂无历史订单记录。
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table className="ledger-table" style={{ fontSize: '0.85rem', width: '100%' }}>
+              <thead>
+                <tr>
+                  <th>股票代码</th>
+                  <th>买卖方向</th>
+                  <th>委托数量</th>
+                  <th>订单类型</th>
+                  <th>成交均价</th>
+                  <th>订单状态</th>
+                  <th>提交时间 (UTC)</th>
+                  <th>订单 ID</th>
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map((ord) => {
+                  const isBuy = ord.side === 'BUY';
+                  const isFilled = ord.status === 'FILLED';
+                  const isAccepted = ord.status === 'ACCEPTED';
+                  
+                  return (
+                    <tr key={ord.order_id}>
+                      <td style={{ fontWeight: 900, color: '#ffffff' }}>{ord.symbol}</td>
+                      <td>
+                        <span style={{
+                          padding: '3px 8px',
+                          borderRadius: '4px',
+                          fontWeight: 800,
+                          fontSize: '0.75rem',
+                          background: isBuy ? 'rgba(0, 200, 5, 0.15)' : 'rgba(255, 59, 48, 0.15)',
+                          color: isBuy ? 'var(--color-green)' : 'var(--color-red)',
+                          border: isBuy ? '1px solid rgba(0, 200, 5, 0.3)' : '1px solid rgba(255, 59, 48, 0.3)'
+                        }}>
+                          {isBuy ? '买入 BUY' : '卖出 SELL'}
+                        </span>
+                      </td>
+                      <td style={{ fontWeight: 700 }}>{ord.qty} 股</td>
+                      <td style={{ color: '#8e8e93' }}>{ord.type}</td>
+                      <td style={{ fontWeight: 800 }}>
+                        {ord.filled_avg_price > 0 ? `$${ord.filled_avg_price.toFixed(2)}` : '--'}
+                      </td>
+                      <td>
+                        <span style={{
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          background: isFilled ? '#1c3829' : (isAccepted ? '#3a2e16' : '#2c2c2e'),
+                          color: isFilled ? 'var(--color-green)' : (isAccepted ? '#ff9500' : '#8e8e93')
+                        }}>
+                          {isFilled ? '✅ 已成交 (FILLED)' : (isAccepted ? '⏳ 已受理 (ACCEPTED)' : ord.status)}
+                        </span>
+                      </td>
+                      <td style={{ color: '#8e8e93', fontSize: '0.78rem' }}>
+                        {ord.submitted_at ? ord.submitted_at.replace('T', ' ').split('.')[0] : '--'}
+                      </td>
+                      <td style={{ color: '#636366', fontSize: '0.75rem', fontFamily: 'monospace' }}>
+                        {ord.order_id.slice(0, 8)}...
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

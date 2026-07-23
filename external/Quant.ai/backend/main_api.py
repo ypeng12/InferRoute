@@ -1460,6 +1460,23 @@ def get_broker_positions():
         return {"success": False, "error": f"获取持仓失败: {str(e)}"}
 
 
+@app.get("/api/broker/orders")
+def get_broker_orders():
+    """
+    获取 AI 交易订单历史记录（从 Alpaca 券商同步）
+    """
+    from app.config import ALPACA_API_KEY, ALPACA_SECRET_KEY, ALPACA_BASE_URL
+    from app.broker.alpaca_adapter import AlpacaAdapter
+    if not (ALPACA_API_KEY and "PK" in ALPACA_API_KEY):
+        return {"success": True, "orders": []}
+    try:
+        adapter = AlpacaAdapter(ALPACA_API_KEY, ALPACA_SECRET_KEY, ALPACA_BASE_URL)
+        orders = adapter.get_all_orders(status="all", limit=50)
+        return {"success": True, "orders": orders}
+    except Exception as e:
+        return {"success": False, "orders": [], "error": str(e)}
+
+
 @app.post("/api/live/start")
 def start_live_trading(req: LiveStartRequest):
     success = live_runner.start(strategy_params=req.params, ignore_market_hours=req.ignore_market_hours)

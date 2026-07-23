@@ -141,7 +141,6 @@ class AlpacaAdapter:
         Close all active positions (force liquidation).
         """
         try:
-            # close_all_positions returns a list of orders submitted to close positions
             close_orders = self.client.close_all_positions(cancel_orders=True)
             return {
                 "success": True,
@@ -152,3 +151,30 @@ class AlpacaAdapter:
                 "success": False,
                 "error": str(e)
             }
+
+    def get_all_orders(self, status: str = "all", limit: int = 50) -> List[Dict]:
+        """
+        Fetch order history from Alpaca (filled, pending, canceled).
+        """
+        from alpaca.trading.requests import GetOrdersRequest
+        from alpaca.trading.enums import QueryOrderStatus
+        try:
+            order_status = QueryOrderStatus.ALL if status == "all" else QueryOrderStatus.CLOSED
+            req = GetOrdersRequest(status=order_status, limit=limit)
+            orders = self.client.get_orders(filter=req)
+            results = []
+            for o in orders:
+                results.append({
+                    "order_id": str(o.id),
+                    "symbol": str(o.symbol),
+                    "qty": int(o.qty or 0),
+                    "side": str(o.side.value).upper(),
+                    "type": str(o.type.value).upper(),
+                    "status": str(o.status.value).upper(),
+                    "submitted_at": str(o.submitted_at),
+                    "filled_at": str(o.filled_at) if o.filled_at else None,
+                    "filled_avg_price": float(o.filled_avg_price or 0.0)
+                })
+            return results
+        except Exception as e:
+            return []
