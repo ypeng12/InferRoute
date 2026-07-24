@@ -35,10 +35,24 @@ interface BrokerOrder {
   filled_avg_price: number;
 }
 
+interface AgentMode {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+  bar_interval: string;
+  hold_overnight: boolean;
+  daily_target: number | null;
+  daily_stop_loss: number | null;
+  max_trades_per_day: number;
+}
+
 export function BrokerPanel() {
   const [account, setAccount] = useState<AccountSummary | null>(null);
   const [positions, setPositions] = useState<BrokerPosition[]>([]);
   const [orders, setOrders] = useState<BrokerOrder[]>([]);
+  const [modes, setModes] = useState<AgentMode[]>([]);
+  const [currentMode, setCurrentMode] = useState<AgentMode | null>(null);
   const [isBotRunning, setIsBotRunning] = useState<boolean>(false);
   const [logs, setLogs] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -80,10 +94,37 @@ export function BrokerPanel() {
         setLogs(statusJson.logs);
       }
 
+      // 5. Fetch AI Agent Modes
+      const modeRes = await fetch(`${API_BASE}/api/agent/modes`);
+      const modeJson = await modeRes.json();
+      if (modeJson.success) {
+        setModes(modeJson.modes);
+        setCurrentMode(modeJson.current_mode);
+      }
+
     } catch (e) {
       console.error("Error fetching broker data:", e);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSelectMode = async (modeId: string) => {
+    setActionLoading(`mode_${modeId}`);
+    try {
+      const res = await fetch(`${API_BASE}/api/agent/mode/select`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode_id: modeId })
+      });
+      const json = await res.json();
+      if (json.success) {
+        setCurrentMode(json.current_mode);
+      }
+    } catch (e) {
+      alert("模式切换失败");
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -267,6 +308,75 @@ export function BrokerPanel() {
               {actionLoading === "stop" ? "⏳ 停止中..." : "⏸️ 暂停 AI 托管"}
             </button>
           )}
+        </div>
+      </div>
+
+      {/* 🤖 AI 操盘手模式切换选择器 (3款托管账号选项) */}
+      <div className="card" style={{ marginBottom: '1.5rem', padding: '1.25rem 1.5rem', background: '#0c0c0e', border: '1px solid var(--color-border)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#ffffff' }}>
+            🤖 AI 操盘手模式切换 (3款托管账号选项)
+          </h3>
+          <span style={{ fontSize: '0.8rem', color: 'var(--color-green)', fontWeight: 700 }}>
+            当前生效: {currentMode ? `${currentMode.icon} ${currentMode.name}` : '加载中...'}
+          </span>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+          {modes.map((m) => {
+            const isSelected = currentMode?.id === m.id;
+            return (
+              <div 
+                key={m.id}
+                onClick={() => handleSelectMode(m.id)}
+                style={{
+                  background: isSelected ? 'rgba(0, 200, 5, 0.08)' : '#141416',
+                  border: isSelected ? '2px solid var(--color-green)' : '1px solid #27272a',
+                  borderRadius: '10px',
+                  padding: '1.1rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  position: 'relative'
+                }}
+              >
+                {isSelected && (
+                  <span style={{
+                    position: 'absolute',
+                    top: '10px',
+                    right: '10px',
+                    background: 'var(--color-green)',
+                    color: '#000',
+                    fontWeight: 900,
+                    fontSize: '0.65rem',
+                    padding: '2px 6px',
+                    borderRadius: '4px'
+                  }}>
+                    ACTIVE 生效中
+                  </span>
+                )}
+                <div style={{ fontSize: '1.3rem', marginBottom: '6px' }}>{m.icon}</div>
+                <div style={{ fontWeight: 800, fontSize: '0.95rem', color: isSelected ? '#ffffff' : '#e5e5e7', marginBottom: '6px' }}>
+                  {m.name}
+                </div>
+                <div style={{ fontSize: '0.78rem', color: '#8e8e93', lineHeight: 1.4, marginBottom: '10px' }}>
+                  {m.description}
+                </div>
+                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', fontSize: '0.7rem' }}>
+                  <span style={{ background: '#27272a', color: '#d4d4d8', padding: '2px 6px', borderRadius: '4px' }}>
+                    K线: {m.bar_interval}
+                  </span>
+                  <span style={{ background: '#27272a', color: '#d4d4d8', padding: '2px 6px', borderRadius: '4px' }}>
+                    过夜: {m.hold_overnight ? '允许' : '禁止过夜'}
+                  </span>
+                  {m.daily_target && (
+                    <span style={{ background: 'rgba(0, 200, 5, 0.15)', color: 'var(--color-green)', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                      目标: ${m.daily_target}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
