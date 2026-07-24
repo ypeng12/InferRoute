@@ -9,7 +9,7 @@ if backend_dir not in sys.path:
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from pydantic import BaseModel
 from typing import Optional
 import uvicorn
@@ -1773,23 +1773,46 @@ def submit_option_order(req: OptionOrderRequest):
     }
 
 
-# 静态文件托管（前端 React 构建产物）
+# 静态文件托管（前端 React 构建产物及预编译产物兜底）
 _backend_dir = os.path.dirname(os.path.abspath(__file__))
-_dist_dir = os.path.join(os.path.dirname(_backend_dir), "frontend", "dist")
+_quant_root = os.path.dirname(_backend_dir)
+_project_root = os.path.dirname(_quant_root)
 
-if os.path.exists(_dist_dir):
-    _assets_dir = os.path.join(_dist_dir, "assets")
-    if os.path.exists(_assets_dir):
-        app.mount("/assets", StaticFiles(directory=_assets_dir), name="assets")
+_dist_dir = os.path.join(_quant_root, "frontend", "dist")
+_dist_assets = os.path.join(_dist_dir, "assets")
 
-    @app.get("/{full_path:path}")
-    async def serve_spa(full_path: str):
-        if full_path.startswith("api/"):
-            return None
-        target_file = os.path.join(_dist_dir, full_path)
-        if full_path and os.path.exists(target_file) and os.path.isfile(target_file):
-            return FileResponse(target_file)
-        return FileResponse(os.path.join(_dist_dir, "index.html"))
+_quant_assets = os.path.join(_quant_root, "assets")
+_proj_assets = os.path.join(_project_root, "assets")
+
+target_assets = None
+if os.path.exists(_dist_assets):
+    target_assets = _dist_assets
+elif os.path.exists(_quant_assets):
+    target_assets = _quant_assets
+elif os.path.exists(_proj_assets):
+    target_assets = _proj_assets
+
+if target_assets:
+    try:
+        app.mount("/assets", StaticFiles(directory=target_assets), name="quant_assets_mount")
+    except Exception:
+        pass
+
+@app.get("/", response_class=HTMLResponse)
+@app.get("/quant", response_class=HTMLResponse)
+@app.get("/quant.html", response_class=HTMLResponse)
+async def serve_quant_index():
+    paths_to_try = [
+        os.path.join(_dist_dir, "index.html"),
+        os.path.join(_quant_root, "index.html"),
+        os.path.join(_project_root, "quant.html"),
+        os.path.join(_project_root, "quant", "index.html"),
+    ]
+    for p in paths_to_try:
+        if os.path.exists(p):
+            with open(p, "r", encoding="utf-8") as f:
+                return f.read()
+    return "<h1>Quant.ai Platform UI Loaded</h1>"
 
 
 if __name__ == "__main__":
