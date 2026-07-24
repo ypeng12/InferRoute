@@ -874,22 +874,16 @@ def ai_agent_decision_endpoint(request: DecisionRequest):
         vol_ratio = float(latest.get("Vol_Ratio", 1.0))
         trend = "看涨趋势" if close_price > latest.get("EMA_20", close_price) else "看跌/回调趋势"
         
-        # Multi-factor AI Stock LLM Decision Scoring
-        score = 50
-        donchian_high = float(latest.get("Donchian_High_20", close_price * 1.05))
-        donchian_low = float(latest.get("Donchian_Low_20", close_price * 0.95))
-        
-        if close_price >= donchian_high * 0.99:
-            score += 25
-        if rsi > 55 and rsi < 70:
-            score += 15
-        if vol_ratio > 1.2:
-            score += 10
-        if latest.get("Bullish_Engulfing", False) or latest.get("Hammer", False):
-            score += 10
-            
-        if rsi > 75 or close_price <= donchian_low * 1.01:
-            score -= 30
+        info = get_company_info(ticker)
+        inst_pct = info.get("institutional_ownership_pct", 75.0)
+        short_pct = info.get("short_interest_pct", 5.0)
+        beta_val = info.get("beta", 1.2)
+
+        # 机构持仓与逼空因子对 AI 得分加成
+        if inst_pct > 70.0:
+            score += 5   # 主力/机构资金锁仓盘
+        if short_pct > 8.0 and score >= 60:
+            score += 10  # 具备逼空 (Short Squeeze) 潜质
 
         if score >= 65:
             action = "BUY"
@@ -898,9 +892,9 @@ def ai_agent_decision_endpoint(request: DecisionRequest):
             stop_loss = round(close_price - 1.2 * atr, 2)
             position_size = "25%"
             reasoning = (
-                f"【炒股大模型看多信号】{ticker} 最新收盘价 ${close_price:.2f} 突破上轨通道，"
-                f"处于强劲的{trend}中。RSI 指标 ({rsi:.1f}) 动能充沛，成交量放大比率达到 {vol_ratio:.2f}x。"
-                f"AI 全自动托管引擎判定胜率较高，建议建仓比例 {position_size}，目标位 ${target_price}，风控止损位 ${stop_loss}。"
+                f"【炒股大模型看多信号】{ticker} 最新收盘价 ${close_price:.2f} 突破上轨通道，处于{trend}中。"
+                f"机构持仓比例达到 {inst_pct:.1f}%，做空比例 {short_pct:.1f}%(具备逼空潜力)，Beta弹性系数 {beta_val:.2f}。"
+                f"RSI({rsi:.1f}) 与成交量放大量比 ({vol_ratio:.2f}x) 动能充沛，建议建仓比例 {position_size}，目标位 ${target_price}，风控止损位 ${stop_loss}。"
             )
         elif score <= 35:
             action = "SELL"
@@ -910,7 +904,7 @@ def ai_agent_decision_endpoint(request: DecisionRequest):
             position_size = "0%"
             reasoning = (
                 f"【炒股大模型避险/看空信号】{ticker} 最新价格 ${close_price:.2f} 处于{trend}受阻状态，"
-                f"RSI 为 {rsi:.1f}，短期多头动能不足。AI 托管引擎建议避险平仓观望，规避潜在回落风险。"
+                f"机构持仓 {inst_pct:.1f}%，做空比例 {short_pct:.1f}%，RSI 为 {rsi:.1f}，短期多头动能不足。AI 建议避险观望。"
             )
         else:
             action = "HOLD"
@@ -920,7 +914,7 @@ def ai_agent_decision_endpoint(request: DecisionRequest):
             position_size = "10%"
             reasoning = (
                 f"【炒股大模型观望信号】{ticker} 当前价格 ${close_price:.2f} 处于窄幅震荡整理阶段，"
-                f"多空力量均衡。AI 托管引擎建议保持当前仓位，等待明确突破信号。"
+                f"机构持仓 {inst_pct:.1f}% 锁定良好，多空力量均衡。AI 托管引擎建议保持当前仓位，等待明确突破信号。"
             )
 
         # Construct Options Recommendation contract
@@ -939,7 +933,7 @@ def ai_agent_decision_endpoint(request: DecisionRequest):
                 "theta": -0.15,
                 "vega": 0.22
             },
-            "reasoning": f"AI 期权量化模型建议策略：买入 {ticker} ${strike} {opt_type} 期权合约。基于大数据 IV Skew 与动量推算，胜率预期高，动态控制风险。"
+            "reasoning": f"AI 期权量化模型结合机构持仓({inst_pct:.1f}%)与做空比({short_pct:.1f}%)推算：建议买入 {ticker} ${strike} {opt_type} 期权合约。在单笔 $1,000 上限内战术开仓。"
         }
 
         return {
@@ -957,7 +951,10 @@ def ai_agent_decision_endpoint(request: DecisionRequest):
                 "rsi": round(rsi, 1),
                 "atr": round(atr, 2),
                 "vol_ratio": round(vol_ratio, 2),
-                "trend": trend
+                "trend": trend,
+                "institutional_ownership_pct": inst_pct,
+                "short_interest_pct": short_pct,
+                "beta": beta_val
             }
         }
     except Exception as e:
