@@ -32,8 +32,8 @@ def clean_float(val, default=0.0):
         return default
 
 
-from app.config import INITIAL_CASH, WATCHLIST, FORCE_LIQUIDATION_TIME, HOT_SECTORS
-from app.data_manager import fetch_and_prepare_data, get_company_info, calculate_atr, INTERVAL_TO_PERIOD
+from app.config import INITIAL_CASH, WATCHLIST, FORCE_LIQUIDATION_TIME, HOT_SECTORS, TRADING_PROFILES
+from app.data_manager import fetch_and_prepare_data, get_company_info, calculate_atr, INTERVAL_TO_PERIOD, fetch_yahoo_market_movers
 from app.patterns import analyze_patterns
 from app.simulator import run_backtest_sim
 from app.agent import parse_research_prompt, get_example_prompts, get_backend_tools, get_chat_response

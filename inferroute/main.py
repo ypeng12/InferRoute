@@ -154,6 +154,13 @@ if active_assets_dir:
         pass
 
 @app.get("/", response_class=HTMLResponse)
+async def get_index_page():
+    root_index = os.path.join(project_root_dir, "index.html")
+    if os.path.exists(root_index):
+        with open(root_index, "r", encoding="utf-8") as f:
+            return f.read()
+    return await get_quant_page("")
+
 @app.get("/quant", response_class=HTMLResponse)
 @app.get("/quant/{full_path:path}", response_class=HTMLResponse)
 async def get_quant_page(full_path: str = ""):
