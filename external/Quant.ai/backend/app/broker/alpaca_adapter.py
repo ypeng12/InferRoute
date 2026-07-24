@@ -30,25 +30,31 @@ class AlpacaAdapter:
 
     def get_account_summary(self) -> Dict:
         """
-        Fetch broker account details.
-        Returns:
-            Dict containing cash, equity, buying power, and account status.
+        Fetch broker account details with retry for Alpaca server 500 glitches.
         """
-        account = self.client.get_account()
-        return {
-            "success": True,
-            "account_number": account.account_number,
-            "status": account.status,
-            "currency": account.currency,
-            "cash": float(account.cash),
-            "portfolio_value": float(account.portfolio_value),
-            "buying_power": float(account.buying_power),
-            "multiplier": float(account.multiplier),
-            "shorting_enabled": account.shorting_enabled,
-            "equity": float(account.equity),
-            "initial_margin": float(account.initial_margin),
-            "maintenance_margin": float(account.maintenance_margin),
-        }
+        import time
+        last_err = None
+        for attempt in range(3):
+            try:
+                account = self.client.get_account()
+                return {
+                    "success": True,
+                    "account_number": account.account_number,
+                    "status": account.status,
+                    "currency": account.currency,
+                    "cash": float(account.cash),
+                    "portfolio_value": float(account.portfolio_value),
+                    "buying_power": float(account.buying_power),
+                    "multiplier": float(account.multiplier),
+                    "shorting_enabled": account.shorting_enabled,
+                    "equity": float(account.equity),
+                    "initial_margin": float(account.initial_margin),
+                    "maintenance_margin": float(account.maintenance_margin),
+                }
+            except Exception as e:
+                last_err = e
+                time.sleep(0.4)
+        raise last_err
 
     def get_open_positions(self) -> List[Dict]:
         """

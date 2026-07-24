@@ -69,7 +69,9 @@ export function BrokerPanel() {
         setAccount(accJson);
         setErrorMsg(null);
       } else {
-        setErrorMsg(accJson.error || "无法获取 Alpaca 账户信息，请检查 Keys 配置。");
+        if (!account) {
+          setErrorMsg(accJson.error || "无法获取 Alpaca 账户信息，请检查 Keys 配置。");
+        }
       }
 
       // 2. Fetch positions
