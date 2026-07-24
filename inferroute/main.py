@@ -154,12 +154,18 @@ if active_assets_dir:
         pass
 
 @app.get("/", response_class=HTMLResponse)
-async def get_index_page():
-    root_index = os.path.join(project_root_dir, "index.html")
-    if os.path.exists(root_index):
-        with open(root_index, "r", encoding="utf-8") as f:
+@app.get("/platform", response_class=HTMLResponse)
+@app.get("/platform.html", response_class=HTMLResponse)
+async def get_platform_page():
+    root_platform = os.path.join(project_root_dir, "platform.html")
+    if os.path.exists(root_platform):
+        with open(root_platform, "r", encoding="utf-8") as f:
             return f.read()
-    return await get_quant_page("")
+    template_path = os.path.join(os.path.dirname(__file__), "templates", "platform.html")
+    if os.path.exists(template_path):
+        with open(template_path, "r", encoding="utf-8") as f:
+            return f.read()
+    return "<h1>InferRoute Multi-LLM API Gateway Platform Active</h1>"
 
 @app.get("/quant", response_class=HTMLResponse)
 @app.get("/quant/{full_path:path}", response_class=HTMLResponse)
@@ -174,7 +180,7 @@ async def get_quant_page(full_path: str = ""):
         if os.path.exists(html_path):
             with open(html_path, "r", encoding="utf-8") as f:
                 return f.read()
-    return "<h1>InferRoute & Quant.ai Platform UI Active</h1>"
+    return "<h1>Quant.ai Platform UI Active</h1>"
 
 @app.get("/quant.html", response_class=HTMLResponse)
 async def get_quant_html_page():
