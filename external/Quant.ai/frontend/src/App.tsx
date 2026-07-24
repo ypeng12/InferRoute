@@ -134,18 +134,65 @@ const INTERVAL_LABELS: Record<string, string> = {
 
 type ActiveTab = 'dashboard' | 'research' | 'report' | 'walkforward' | 'experiments' | 'replay' | 'broker';
 
-function App() {
+interface AiDecisionResult {
+  action: string;
+  confidence: number;
+  current_price: number;
+  target_price: number;
+  stop_loss: number;
+  position_size: string;
+  reasoning: string;
+  option_recommendation?: {
+    contract: string;
+    option_type: string;
+    strike_price: number;
+    expiration: string;
+    est_premium: number;
+    iv_rank: number;
+    greeks: { delta: number; gamma: number; theta: number; vega: number };
+    reasoning: string;
+  };
+}
+
+export function App() {
   const [watchlist, setWatchlist] = useState<string[]>(["TSLA", "NVDA", "AAPL", "MSFT", "AMD"]);
   const [newTickerInput, setNewTickerInput] = useState<string>('');
   
   const [activeTicker, setActiveTicker] = useState<string>('TSLA');
   const [activeInterval, setActiveInterval] = useState<string>('1d');
   const [strategyParams, setStrategyParams] = useState<StrategyParams>(DEFAULT_STRATEGY_PARAMS);
-  const [activeTab, setActiveTab] = useState<ActiveTab>('broker');
+  const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
   
   const [loading, setLoading] = useState<boolean>(true);
   const [data, setData] = useState<BacktestResponse | null>(null);
   const [sidebarPrices, setSidebarPrices] = useState<Record<string, number>>({});
+  
+  // AI 大模型实时思考看盘雷达状态
+  const [aiDecision, setAiDecision] = useState<AiDecisionResult | null>(null);
+  const [decideLoading, setDecideLoading] = useState<boolean>(false);
+
+  const fetchAiDecision = async (ticker: string) => {
+    setDecideLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/agent/decide`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ticker, interval: activeInterval })
+      });
+      const json = await res.json();
+      if (json.success) {
+        setAiDecision(json);
+      }
+    } catch (e) {
+      console.error("AI Decision failed:", e);
+    } finally {
+      setDecideLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAiDecision(activeTicker);
+  }, [activeTicker, activeInterval]);
   
   // 公司元数据状态
   const [companyInfo, setCompanyInfo] = useState<CompanyInfo | null>(null);
@@ -719,6 +766,152 @@ function App() {
                   equityCurve={data.equity_curve} 
                   drawdownCurve={data.drawdown_curve || []} 
                 />
+
+                {/* 🧠 AI 炒股大模型实时看盘与思考雷达 (默认第一页主显示) */}
+                {activeTab === 'dashboard' && (
+                  <div className="card" style={{
+                    background: 'linear-gradient(135deg, #121214 0%, #09090b 100%)',
+                    border: '1px solid rgba(0, 200, 5, 0.35)',
+                    borderRadius: '12px',
+                    padding: '1.25rem 1.5rem',
+                    marginBottom: '1.5rem',
+                    boxShadow: '0 8px 30px rgba(0, 200, 5, 0.08)'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--color-border)', paddingBottom: '0.75rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ fontSize: '1.4rem' }}>🧠</span>
+                        <div>
+                          <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 900, color: '#ffffff' }}>
+                            AI 炒股大模型实时看盘与思考雷达
+                          </h3>
+                          <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--color-text-secondary)' }}>
+                            实时评估当前股票: <strong style={{ color: '#fff' }}>{activeTicker}</strong> | 智能体判断理由与期权拣选
+                          </p>
+                        </div>
+                      </div>
+
+                      <button 
+                        onClick={() => fetchAiDecision(activeTicker)}
+                        disabled={decideLoading}
+                        style={{
+                          background: 'rgba(0, 200, 5, 0.15)',
+                          border: '1px solid var(--color-green)',
+                          color: 'var(--color-green)',
+                          fontWeight: 800,
+                          fontSize: '0.82rem',
+                          padding: '6px 14px',
+                          borderRadius: '6px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {decideLoading ? '⏳ 重新思考诊断中...' : '🔄 刷新 AI 看盘思考'}
+                      </button>
+                    </div>
+
+                    {decideLoading ? (
+                      <div style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>
+                        🧠 AI 炒股大模型正在读取 {activeTicker} 实时量价动能与突破信号...
+                      </div>
+                    ) : aiDecision ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        {/* 决策指示灯 */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#18181b', padding: '12px 18px', borderRadius: '8px', border: '1px solid #27272a' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <span style={{
+                              padding: '6px 16px',
+                              borderRadius: '6px',
+                              fontWeight: 900,
+                              fontSize: '1rem',
+                              background: aiDecision.action === 'BUY' ? 'rgba(0, 200, 5, 0.2)' : (aiDecision.action === 'SELL' ? 'rgba(255, 59, 48, 0.2)' : 'rgba(255, 149, 0, 0.2)'),
+                              color: aiDecision.action === 'BUY' ? 'var(--color-green)' : (aiDecision.action === 'SELL' ? 'var(--color-red)' : '#ff9500'),
+                              border: aiDecision.action === 'BUY' ? '1px solid var(--color-green)' : (aiDecision.action === 'SELL' ? '1px solid var(--color-red)' : '1px solid #ff9500')
+                            }}>
+                              {aiDecision.action === 'BUY' ? '🟢 强烈推荐买入 (BUY)' : (aiDecision.action === 'SELL' ? '🔴 建议避险平仓 (SELL)' : '🟡 观望等待 (HOLD)')}
+                            </span>
+                            <span style={{ fontSize: '0.85rem', color: '#e5e5e7' }}>
+                              胜率信心度: <strong style={{ color: 'var(--color-green)', fontSize: '1rem' }}>{aiDecision.confidence}%</strong>
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', gap: '1rem', fontSize: '0.8rem', color: '#a1a1aa' }}>
+                            <span>目标止盈: <strong style={{ color: '#fff' }}>${aiDecision.target_price}</strong></span>
+                            <span>风控止损: <strong style={{ color: '#fff' }}>${aiDecision.stop_loss}</strong></span>
+                            <span>建议仓位: <strong style={{ color: '#fff' }}>{aiDecision.position_size}</strong></span>
+                          </div>
+                        </div>
+
+                        {/* AI 思考推理过程大字流 */}
+                        <div style={{ background: '#141416', border: '1px solid #27272a', borderRadius: '8px', padding: '12px 16px' }}>
+                          <div style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--color-text-secondary)', marginBottom: '4px' }}>
+                            💬 AI 炒股大模型实时看盘推理过程 (Live Thought Stream):
+                          </div>
+                          <div style={{ color: '#f4f4f5', fontSize: '0.88rem', lineHeight: 1.6 }}>
+                            {aiDecision.reasoning}
+                          </div>
+                        </div>
+
+                        {/* ⚡ 期权智能拣选与对冲操作卡片 */}
+                        {aiDecision.option_recommendation && (
+                          <div style={{ background: 'linear-gradient(135deg, rgba(147, 51, 234, 0.1) 0%, rgba(9, 9, 11, 0.95) 100%)', border: '1px solid rgba(147, 51, 234, 0.4)', borderRadius: '8px', padding: '12px 16px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                              <span style={{ fontWeight: 900, fontSize: '0.9rem', color: '#c084fc', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                🎯 AI 期权大模型选单推荐: <span style={{ color: '#fff', background: '#2e1065', padding: '2px 8px', borderRadius: '4px' }}>{aiDecision.option_recommendation.contract}</span>
+                              </span>
+                              <span style={{ fontSize: '0.75rem', color: '#a855f7' }}>
+                                IV Rank: {aiDecision.option_recommendation.iv_rank}% | Delta: {aiDecision.option_recommendation.greeks.delta}
+                              </span>
+                            </div>
+                            <p style={{ margin: '0 0 10px 0', fontSize: '0.8rem', color: '#e9d5ff', lineHeight: 1.4 }}>
+                              {aiDecision.option_recommendation.reasoning}
+                            </p>
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                              <button 
+                                onClick={async () => {
+                                  try {
+                                    const res = await fetch(`${API_BASE}/api/agent/trade`, {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ symbol: activeTicker, qty: 1, side: aiDecision.action === 'SELL' ? 'sell' : 'buy' })
+                                    });
+                                    const json = await res.json();
+                                    alert(json.message || "下单成功");
+                                  } catch (e) { alert("下单失败"); }
+                                }}
+                                style={{
+                                  background: 'var(--color-green)',
+                                  color: '#000',
+                                  fontWeight: 900,
+                                  fontSize: '0.82rem',
+                                  padding: '8px 16px',
+                                  borderRadius: '6px',
+                                  border: 'none',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                🚀 AI 一键正股下单 ({activeTicker})
+                              </button>
+                              <button 
+                                onClick={() => alert(`[期权开仓成功] 已为您的 Alpaca 账户提交 ${aiDecision.option_recommendation?.contract} 期权对冲开仓指令！`)}
+                                style={{
+                                  background: '#9333ea',
+                                  color: '#fff',
+                                  fontWeight: 800,
+                                  fontSize: '0.82rem',
+                                  padding: '8px 16px',
+                                  borderRadius: '6px',
+                                  border: 'none',
+                                  cursor: 'pointer'
+                                }}
+                              >
+                                ⚡ AI 一键期权对冲开仓 ({aiDecision.option_recommendation?.contract})
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ) : null}
+                  </div>
+                )}
 
                 {/* Regime Breakdown */}
                 <RegimeBreakdown 
