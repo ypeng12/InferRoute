@@ -124,32 +124,12 @@ if os.path.exists(static_dir):
 
 app.include_router(plugins.router)
 
-# ── Quant.ai Integration ──────────────────────────────────────────────────────
-quant_backend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "external", "Quant.ai", "backend")
-if os.path.exists(quant_backend_dir):
-    if quant_backend_dir not in sys.path:
-        sys.path.insert(0, quant_backend_dir)
-    try:
-        import main_api as quant_main_api
-        app.include_router(quant_main_api.app.router)
-        logger.info("Quant.ai API routes registered successfully.")
-    except Exception as e:
-        logger.warning(f"Failed to load Quant.ai backend: {e}")
-
+# ── Assets and Static Mounts ──────────────────────────────────────────────────
 project_root_dir = os.path.dirname(os.path.dirname(__file__))
-candidate_assets = [
-    os.path.join(project_root_dir, "external", "Quant.ai", "frontend", "dist", "assets"),
-    os.path.join(project_root_dir, "external", "Quant.ai", "assets"),
-    os.path.join(project_root_dir, "assets"),
-]
-active_assets_dir = next((d for d in candidate_assets if os.path.exists(d)), None)
-if active_assets_dir:
+root_assets = os.path.join(project_root_dir, "assets")
+if os.path.exists(root_assets):
     try:
-        app.mount("/assets", StaticFiles(directory=active_assets_dir), name="assets")
-    except Exception:
-        pass
-    try:
-        app.mount("/quant/assets", StaticFiles(directory=active_assets_dir), name="quant_assets")
+        app.mount("/assets", StaticFiles(directory=root_assets), name="assets")
     except Exception:
         pass
 
@@ -166,25 +146,6 @@ async def get_platform_page():
         with open(template_path, "r", encoding="utf-8") as f:
             return f.read()
     return "<h1>InferRoute Multi-LLM API Gateway Platform Active</h1>"
-
-@app.get("/quant", response_class=HTMLResponse)
-@app.get("/quant/{full_path:path}", response_class=HTMLResponse)
-async def get_quant_page(full_path: str = ""):
-    candidate_htmls = [
-        os.path.join(project_root_dir, "external", "Quant.ai", "frontend", "dist", "index.html"),
-        os.path.join(project_root_dir, "external", "Quant.ai", "index.html"),
-        os.path.join(project_root_dir, "quant.html"),
-        os.path.join(project_root_dir, "quant", "index.html"),
-    ]
-    for html_path in candidate_htmls:
-        if os.path.exists(html_path):
-            with open(html_path, "r", encoding="utf-8") as f:
-                return f.read()
-    return "<h1>Quant.ai Platform UI Active</h1>"
-
-@app.get("/quant.html", response_class=HTMLResponse)
-async def get_quant_html_page():
-    return await get_quant_page("")
 
 
 @app.get("/platform", response_class=HTMLResponse)

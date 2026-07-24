@@ -1,12 +1,4 @@
-# Stage 1: Build React frontend for Quant.ai
-FROM node:20-alpine AS frontend-builder
-WORKDIR /app/frontend
-COPY external/Quant.ai/frontend/package*.json ./
-RUN npm install --legacy-peer-deps
-COPY external/Quant.ai/frontend/ ./
-RUN npm run build
-
-# Stage 2: Python 3.12 high-performance inference gateway
+# Python 3.12 high-performance inference gateway
 FROM python:3.12-slim
 
 # Set environment variables
@@ -38,15 +30,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY inferroute/ ./inferroute/
 COPY docs/ ./docs/
 COPY benchmarks/ ./benchmarks/
-COPY external/ ./external/
-COPY platform/ ./platform/
-COPY quant/ ./quant/
 COPY *.html ./
 COPY assets/ ./assets/
-COPY *.svg ./
-
-# Copy compiled React frontend distribution bundle from Stage 1
-COPY --from=frontend-builder /app/frontend/dist ./external/Quant.ai/frontend/dist
 
 # Expose default port (7860 for Hugging Face Spaces)
 EXPOSE 7860
