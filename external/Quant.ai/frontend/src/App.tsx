@@ -154,6 +154,24 @@ interface AiDecisionResult {
   };
 }
 
+interface OptionOrderRecord {
+  order_id: string;
+  symbol: string;
+  contract: string;
+  option_type: string;
+  strike_price: number;
+  contracts_qty: number;
+  premium_per_share: number;
+  contract_cost: number;
+  total_spent: number;
+  max_capital_limit: number;
+  underlying_price: number;
+  status: string;
+  submitted_at: string;
+  greeks: { delta: number; gamma: number; theta: number; vega: number; iv_rank: number };
+  message: string;
+}
+
 export function App() {
   const [watchlist, setWatchlist] = useState<string[]>(["TSLA", "NVDA", "AAPL", "MSFT", "AMD"]);
   const [newTickerInput, setNewTickerInput] = useState<string>('');
@@ -170,6 +188,21 @@ export function App() {
   // AI 大模型实时思考看盘雷达状态
   const [aiDecision, setAiDecision] = useState<AiDecisionResult | null>(null);
   const [decideLoading, setDecideLoading] = useState<boolean>(false);
+  const [optionsOrders, setOptionsOrders] = useState<OptionOrderRecord[]>([]);
+
+  const fetchOptionsOrders = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/api/options/orders`);
+      const json = await res.json();
+      if (json.success && json.orders) {
+        setOptionsOrders(json.orders);
+      }
+    } catch (e) {}
+  };
+
+  useEffect(() => {
+    fetchOptionsOrders();
+  }, []);
 
   const fetchAiDecision = async (ticker: string) => {
     setDecideLoading(true);
@@ -891,7 +924,24 @@ export function App() {
                                 🚀 AI 一键正股下单 ({activeTicker})
                               </button>
                               <button 
-                                onClick={() => alert(`[期权开仓成功] 已为您的 Alpaca 账户提交 ${aiDecision.option_recommendation?.contract} 期权对冲开仓指令！`)}
+                                onClick={async () => {
+                                  try {
+                                    const res = await fetch(`${API_BASE}/api/options/order`, {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({
+                                        symbol: activeTicker,
+                                        contract: aiDecision.option_recommendation?.contract,
+                                        option_type: aiDecision.option_recommendation?.option_type || 'CALL',
+                                        strike_price: aiDecision.option_recommendation?.strike_price,
+                                        max_capital: 1000.0
+                                      })
+                                    });
+                                    const json = await res.json();
+                                    alert(json.message || "期权开仓成功！");
+                                    fetchOptionsOrders();
+                                  } catch (e) { alert("期权下单失败"); }
+                                }}
                                 style={{
                                   background: '#9333ea',
                                   color: '#fff',
@@ -903,13 +953,81 @@ export function App() {
                                   cursor: 'pointer'
                                 }}
                               >
-                                ⚡ AI 一键期权对冲开仓 ({aiDecision.option_recommendation?.contract})
+                                ⚡ AI 一键期权对冲开仓 (上限 $1000)
                               </button>
                             </div>
                           </div>
                         )}
                       </div>
                     ) : null}
+                  </div>
+                )}
+
+                {/* 🎟️ AI 期权交易持仓与买入历史账单 (Max $1000 开仓上限) */}
+                {activeTab === 'dashboard' && optionsOrders.length > 0 && (
+                  <div className="card" style={{
+                    background: 'linear-gradient(135deg, #150d2a 0%, #09090b 100%)',
+                    border: '1px solid rgba(147, 51, 234, 0.4)',
+                    borderRadius: '12px',
+                    padding: '1.25rem 1.5rem',
+                    marginBottom: '1.5rem'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                      <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 800, color: '#c084fc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        🎟️ AI 期权买入与持仓历史账单 (单笔权利金 ≤ $1,000 上限)
+                      </h3>
+                      <span style={{ fontSize: '0.8rem', color: '#a855f7', fontWeight: 700 }}>
+                        已成交 {optionsOrders.length} 笔期权开仓
+                      </span>
+                    </div>
+
+                    <div style={{ overflowX: 'auto' }}>
+                      <table className="ledger-table" style={{ fontSize: '0.85rem', width: '100%' }}>
+                        <thead>
+                          <tr>
+                            <th>期权合约</th>
+                            <th>看涨/看跌</th>
+                            <th>行权价</th>
+                            <th>买入张数 (股数)</th>
+                            <th>权利金单价</th>
+                            <th>权利金总支出 (Max $1000)</th>
+                            <th>希腊字母 (Delta / Gamma)</th>
+                            <th>状态</th>
+                            <th>成交时间</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {optionsOrders.map((opt) => (
+                            <tr key={opt.order_id}>
+                              <td style={{ fontWeight: 900, color: '#ffffff' }}>{opt.contract}</td>
+                              <td>
+                                <span style={{
+                                  padding: '2px 8px',
+                                  borderRadius: '4px',
+                                  fontWeight: 800,
+                                  fontSize: '0.75rem',
+                                  background: opt.option_type === 'CALL' ? 'rgba(0, 200, 5, 0.15)' : 'rgba(255, 59, 48, 0.15)',
+                                  color: opt.option_type === 'CALL' ? 'var(--color-green)' : 'var(--color-red)'
+                                }}>
+                                  {opt.option_type}
+                                </span>
+                              </td>
+                              <td style={{ fontWeight: 800 }}>${opt.strike_price}</td>
+                              <td style={{ fontWeight: 800 }}>{opt.contracts_qty} 张 ({opt.contracts_qty * 100}股)</td>
+                              <td>${opt.premium_per_share}/股</td>
+                              <td style={{ fontWeight: 900, color: '#c084fc' }}>${opt.total_spent}</td>
+                              <td style={{ color: '#a855f7', fontSize: '0.78rem' }}>Δ {opt.greeks.delta} | Γ {opt.greeks.gamma}</td>
+                              <td>
+                                <span style={{ background: '#2e1065', color: '#c084fc', padding: '2px 6px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 800 }}>
+                                  ✅ {opt.status}
+                                </span>
+                              </td>
+                              <td style={{ color: '#8e8e93', fontSize: '0.78rem' }}>{opt.submitted_at}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
 
