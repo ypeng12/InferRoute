@@ -32,7 +32,7 @@ def clean_float(val, default=0.0):
         return default
 
 
-from app.config import INITIAL_CASH, WATCHLIST, FORCE_LIQUIDATION_TIME
+from app.config import INITIAL_CASH, WATCHLIST, FORCE_LIQUIDATION_TIME, HOT_SECTORS
 from app.data_manager import fetch_and_prepare_data, get_company_info, calculate_atr, INTERVAL_TO_PERIOD
 from app.patterns import analyze_patterns
 from app.simulator import run_backtest_sim
@@ -87,7 +87,7 @@ def load_persistent_watchlist() -> list:
                     return [str(t).upper() for t in data]
         except Exception:
             pass
-    return ["TSLA", "NVDA", "AAPL", "MSFT", "AMD"]
+    return ["NVDA", "TSLA", "AAPL", "AMD", "MU", "PLTR", "MSTR"]
 
 def save_persistent_watchlist(watchlist: list):
     try:
@@ -106,9 +106,72 @@ class WatchlistModifyRequest(BaseModel):
 @app.get("/api/watchlist")
 def get_watchlist_data():
     """
-    获取自选股池的列表（支持持久化）
+    获取自选股池的列表（支持持久化 + 自动标记持仓状态与热门板块元数据）
     """
-    return {"watchlist": WATCHLIST}
+    open_positions = []
+    try:
+        positions_info = live_runner.alpaca.get_open_positions()
+        open_positions = [p["ticker"].upper() for p in positions_info]
+    except Exception:
+        pass
+
+    enriched_watchlist = []
+    for ticker in WATCHLIST:
+        # 判断所属热门板块
+        category = "其他"
+        for sec_key, sec_data in HOT_SECTORS.items():
+            if ticker in sec_data["tickers"]:
+                category = sec_data["name"]
+                break
+        
+        enriched_watchlist.append({
+            "ticker": ticker,
+            "is_holding": ticker in open_positions,
+            "category": category
+        })
+
+    return {
+        "watchlist": WATCHLIST,
+        "details": enriched_watchlist,
+        "total": len(WATCHLIST),
+        "holdings_count": len([item for item in enriched_watchlist if item["is_holding"]])
+    }
+
+@app.post("/api/watchlist/sync_holdings")
+def sync_holdings_to_watchlist():
+    """
+    一键同步已拥有的股票（持仓）到 Watchlist
+    """
+    try:
+        positions_info = live_runner.alpaca.get_open_positions()
+        added_count = 0
+        for p in positions_info:
+            t = p["ticker"].upper()
+            if t not in WATCHLIST:
+                WATCHLIST.append(t)
+                added_count += 1
+        if added_count > 0:
+            save_persistent_watchlist(WATCHLIST)
+            live_runner.active_tickers = WATCHLIST.copy()
+        return {
+            "success": True, 
+            "added_count": added_count, 
+            "watchlist": WATCHLIST,
+            "message": f"成功从现有持仓同步 {added_count} 只股票到 Watchlist 监控池。"
+        }
+    except Exception as e:
+        return {"success": False, "error": f"同步持仓失败: {str(e)}"}
+
+@app.get("/api/watchlist/hot_sectors")
+def get_hot_sectors_universe():
+    """
+    获取推荐热门板块库 (AI算力、科技巨头、加密动能等)
+    """
+    return {
+        "success": True,
+        "hot_sectors": HOT_SECTORS,
+        "recommended_tickers": ["NVDA", "TSLA", "PLTR", "AMD", "AVGO", "MSTR", "MSFT", "AAPL", "COIN", "TQQQ"]
+    }
 
 @app.post("/api/watchlist/add")
 def add_watchlist_ticker(req: WatchlistModifyRequest):

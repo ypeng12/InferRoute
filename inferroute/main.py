@@ -76,21 +76,29 @@ concurrency_limiter = AdaptiveConcurrencyLimiter()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("Starting InferRoute gateway…")
-    await init_db()
+    try:
+        await init_db()
+    except Exception as e:
+        logger.warning(f"Database init warning (running in degraded/mock mode): {e}")
 
-    import inferroute.auth as auth
-    redis_client = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
-    auth.redis_client = redis_client
-
-    # Inject Redis into circuit breakers
-    circuit_breaker.initialize_circuit_breakers(redis_client, list(ADAPTERS.keys()))
+    try:
+        import inferroute.auth as auth
+        redis_client = aioredis.from_url(settings.REDIS_URL, decode_responses=True)
+        auth.redis_client = redis_client
+        circuit_breaker.initialize_circuit_breakers(redis_client, list(ADAPTERS.keys()))
+    except Exception as e:
+        logger.warning(f"Redis initialization skipped ({e}). Gateway running in standalone mode.")
 
     logger.info("InferRoute gateway ready.")
     yield
 
-    if auth.redis_client:
-        await auth.redis_client.aclose()
-        logger.info("Redis connection closed.")
+    try:
+        import inferroute.auth as auth
+        if auth.redis_client:
+            await auth.redis_client.aclose()
+            logger.info("Redis connection closed.")
+    except Exception:
+        pass
 
 
 # ── App ───────────────────────────────────────────────────────────────────────

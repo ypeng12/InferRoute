@@ -8,7 +8,7 @@ class Settings(BaseSettings):
 
     # ── Databases ─────────────────────────────────────────────────────────────
     DATABASE_URL: str = Field(
-        default="postgresql+asyncpg://postgres:postgres@localhost:5432/inferroute",
+        default="sqlite+aiosqlite:///./inferroute.db",
         validation_alias="DATABASE_URL"
     )
     REDIS_URL: str = Field(

@@ -1,0 +1,14 @@
+node_modules
+**/node_modules
+__pycache__
+**/__pycache__
+*.pyc
+*.pyo
+.venv
+venv
+.git
+.pytest_cache
+*.db
+*.log
+.DS_Store
+Thumbs.db
