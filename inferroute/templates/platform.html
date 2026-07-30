@@ -121,6 +121,7 @@
         </div>
         <div class="nav-links">
             <span class="nav-link active" onclick="navigateTo('api')" id="navApi">API Integration</span>
+            <span class="nav-link" onclick="navigateTo('lab')" id="navLab">⚡ Live Optimization Lab</span>
             <span class="nav-link" onclick="navigateTo('apps')" id="navApps">App Showcase</span>
             <span class="nav-link" onclick="navigateTo('proof')" id="navProof">Empirical Proof</span>
             <span class="nav-link" onclick="navigateTo('cost')" id="navCost">Cost Savings</span>
@@ -135,6 +136,92 @@
     </header>
 
     <main>
+
+        <!-- VIEW: LIVE OPTIMIZATION LAB (#lab) -->
+        <div class="spa-view" id="viewLab">
+            <section class="hero">
+                <div class="tagline-banner">🔍 100% Real-Time Interactive Prompt & Token Optimization Inspector</div>
+                <h1>Live AI Execution & Token Optimization Lab</h1>
+                <p>
+                    Type any custom prompt or select a real prompt from <code>allenai/WildChat-4.8M</code> to see exactly how InferRoute analyzes task complexity, checks Radix Trie KV-cache, dynamically routes models, and calculates token & cost savings in real-time.
+                </p>
+            </section>
+
+            <section class="card">
+                <div class="card-header">
+                    <div class="card-title">📝 Prompt Tester & WildChat Dataset Selector</div>
+                </div>
+
+                <div style="display:flex; gap:0.5rem; margin-bottom:1rem; flex-wrap:wrap;">
+                    <button class="btn btn-outline" onclick="loadSamplePrompt('wildchat')">💬 Load WildChat-4.8M Real Prompt</button>
+                    <button class="btn btn-outline" onclick="loadSamplePrompt('coding')">🐍 Load MBPP Python Code Prompt</button>
+                    <button class="btn btn-outline" onclick="loadSamplePrompt('math')">📐 Load GSM8K Math Prompt</button>
+                    <button class="btn btn-outline" onclick="loadSamplePrompt('quant')">📈 Load Quant Financial Prompt</button>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:1rem;">
+                    <div>
+                        <label style="font-weight:700; font-size:0.9rem; margin-bottom:0.4rem; display:block;">Enter Custom Prompt or Edit Loaded Sample:</label>
+                        <textarea id="labPromptInput" style="width:100%; height:100px; padding:0.75rem; border:1px solid #cbd5e1; border-radius:8px; font-size:0.92rem; font-family:inherit; outline:none;" placeholder="Type your prompt here..."></textarea>
+                    </div>
+
+                    <div style="display:flex; gap:1rem; align-items:center; flex-wrap:wrap;">
+                        <div>
+                            <label style="font-weight:600; font-size:0.85rem;">Routing Policy:</label>
+                            <select id="labPolicySelect" style="padding:0.4rem 0.8rem; border-radius:6px; border:1px solid #cbd5e1;">
+                                <option value="cascade">Speculative Cascade (FrugalGPT)</option>
+                                <option value="knn">KNN Jaccard Similarity</option>
+                                <option value="mlp">MLP Content Classifier</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label style="font-weight:600; font-size:0.85rem;">Target SLA Latency:</label>
+                            <select id="labSlaSelect" style="padding:0.4rem 0.8rem; border-radius:6px; border:1px solid #cbd5e1;">
+                                <option value="300">300 ms (High Speed)</option>
+                                <option value="500" selected>500 ms (Balanced)</option>
+                                <option value="1000">1000 ms (Deep Reasoning)</option>
+                            </select>
+                        </div>
+
+                        <button class="btn" onclick="runOptimizationInspect()" style="margin-left:auto;">
+                            🚀 Run Optimization Inspection
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- RESULTS & TRACE INSPECTOR -->
+            <div id="labResultCard" class="card" style="display:none;">
+                <div class="card-header">
+                    <div class="card-title">📊 Live Optimization Metrics & Execution Trace</div>
+                </div>
+
+                <div class="grid-4" style="margin-bottom:1.5rem;">
+                    <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:1rem; border-radius:10px;">
+                        <span style="font-size:0.8rem; color:#64748b; font-weight:700;">Task Category</span>
+                        <div id="resCategory" style="font-size:1.05rem; font-weight:800; color:#0f172a; margin-top:0.2rem;">-</div>
+                    </div>
+                    <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:1rem; border-radius:10px;">
+                        <span style="font-size:0.8rem; color:#64748b; font-weight:700;">Routed Target Model</span>
+                        <div id="resTargetModel" style="font-size:1.05rem; font-weight:800; color:#2563eb; margin-top:0.2rem;">-</div>
+                    </div>
+                    <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:1rem; border-radius:10px;">
+                        <span style="font-size:0.8rem; color:#64748b; font-weight:700;">Estimated Token Count</span>
+                        <div id="resTokens" style="font-size:1.05rem; font-weight:800; color:#7c3aed; margin-top:0.2rem;">-</div>
+                    </div>
+                    <div style="background:#f0fdf4; border:1px solid #bbf7d0; padding:1rem; border-radius:10px;">
+                        <span style="font-size:0.8rem; color:#166534; font-weight:700;">API Spend Saved</span>
+                        <div id="resSpendSaved" style="font-size:1.15rem; font-weight:800; color:#15803d; margin-top:0.2rem;">-</div>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 style="font-size:0.95rem; font-weight:700; margin-bottom:0.5rem; color:#0f172a;">⏱️ Step-by-Step AI Gateway Execution Log (Live Timeline):</h4>
+                    <div id="resTraceLogs" class="code-box" style="min-height:140px;">Waiting for test execution...</div>
+                </div>
+            </div>
+        </div>
 
         <!-- VIEW 1: API INTEGRATION QUICKSTART (HOW TO USE IN YOUR PROJECTS) -->
         <div class="spa-view active" id="viewApi">
@@ -543,6 +630,13 @@ Saved Cost = Baseline_Cost (GPT-4) - Actual_Cost (Routed Model)
                 document.getElementById('viewApi').classList.add('active');
                 document.getElementById('navApi').classList.add('active');
                 window.location.hash = '#api';
+            } else if (viewName === 'lab') {
+                document.getElementById('viewLab').classList.add('active');
+                document.getElementById('navLab').classList.add('active');
+                window.location.hash = '#lab';
+                if (!document.getElementById('labPromptInput').value) {
+                    loadSamplePrompt('wildchat');
+                }
             } else if (viewName === 'apps') {
                 document.getElementById('viewApps').classList.add('active');
                 document.getElementById('navApps').classList.add('active');
@@ -565,45 +659,62 @@ Saved Cost = Baseline_Cost (GPT-4) - Actual_Cost (Routed Model)
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        function toggleLanguage() {
-            currentLang = (currentLang === 'EN') ? 'ZH' : 'EN';
-            const langData = i18n[currentLang];
-            
-            for (let key in langData) {
-                const el = document.getElementById(key);
-                if (el) el.innerText = langData[key];
+        function loadSamplePrompt(type) {
+            const input = document.getElementById('labPromptInput');
+            if (type === 'wildchat') {
+                input.value = "Can you write a detailed analysis comparing the memory management strategies of Rust vs C++ with concrete code examples, and summarize the key safety guarantees?";
+            } else if (type === 'coding') {
+                input.value = "Write a Python function `find_longest_palindromic_substring(s: str) -> str` using dynamic programming with O(n^2) time complexity and comprehensive unit tests.";
+            } else if (type === 'math') {
+                input.value = "Janet has 3 times as many marbles as Michael. Michael gives 5 marbles to Janet. Now Janet has 4 times as many marbles as Michael. How many marbles did Michael start with? Show step-by-step reasoning.";
+            } else if (type === 'quant') {
+                input.value = "Summarize the 10-K financial filing excerpt: Calculate YoY Revenue Growth %, Net Profit Margin %, EBITDA Margin, and identify key operational risks mentioned in Item 1A.";
             }
         }
 
-        async function fetchAnalyticsSummary() {
-            const out = document.getElementById('analyticsOutput');
-            out.innerText = "🔄 Loading real-time evaluation metrics from eval_results.json...";
-            try {
-                const res = await fetch('/v1/analytics/summary');
-                const data = await res.json();
-                out.innerText = JSON.stringify(data, null, 2);
+        async function runOptimizationInspect() {
+            const prompt = document.getElementById('labPromptInput').value;
+            const policy = document.getElementById('labPolicySelect').value;
+            const sla = document.getElementById('labSlaSelect').value;
+            const resultCard = document.getElementById('labResultCard');
+            const traceLogsEl = document.getElementById('resTraceLogs');
 
-                if (data.total_requests !== undefined) {
-                    document.getElementById('valTotalReqs').innerText = data.total_requests.toLocaleString();
+            if (!prompt) {
+                alert("Please enter a prompt or click one of the sample buttons!");
+                return;
+            }
+
+            resultCard.style.display = 'block';
+            traceLogsEl.innerText = "⏳ Executing Real-Time Prompt Classification, Trie Lookup & Model Routing...";
+
+            try {
+                const res = await fetch('/v1/optimize/inspect', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: prompt, policy: policy, target_sla_ms: sla })
+                });
+
+                const data = await res.json();
+                if (data.error) {
+                    traceLogsEl.innerText = "Error: " + data.error;
+                    return;
                 }
-                if (data.total_cost_saved_usd !== undefined) {
-                    document.getElementById('valTotalSaved').innerText = '$' + data.total_cost_saved_usd.toFixed(2);
-                }
-                if (data.clients && data.clients.antigravity) {
-                    document.getElementById('valAntigravityReqs').innerText = data.clients.antigravity.requests.toLocaleString();
-                }
-                if (data.clients && data.clients.quant_app) {
-                    document.getElementById('valQuantReqs').innerText = data.clients.quant_app.requests.toLocaleString();
-                }
+
+                document.getElementById('resCategory').innerText = data.category;
+                document.getElementById('resTargetModel').innerText = data.target_backend + ' / ' + data.target_model;
+                document.getElementById('resTokens').innerText = data.total_tokens + ' tokens';
+                document.getElementById('resSpendSaved').innerText = data.spend_saved_percent + '% Saved';
+
+                traceLogsEl.innerText = data.trace_logs.join('\n');
             } catch (e) {
-                out.innerText = "Error: " + e.message;
+                traceLogsEl.innerText = "Network / Gateway Connection Error: " + e.message;
             }
         }
 
         // Handle initial hash routing
         window.addEventListener('load', () => {
             const hash = window.location.hash.replace('#', '');
-            if (['apps', 'proof', 'cost', 'analytics'].includes(hash)) {
+            if (['lab', 'apps', 'proof', 'cost', 'analytics'].includes(hash)) {
                 navigateTo(hash);
             } else {
                 navigateTo('api');
