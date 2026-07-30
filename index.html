@@ -7,17 +7,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Outfit', -apple-system, sans-serif; }
-        body { background: #0f172a; color: #f8fafc; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        body { background: #ffffff; color: #0f172a; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         
         .nav-bar {
             height: 52px;
-            background: rgba(15, 23, 42, 0.95);
-            border-bottom: 1px solid #1e293b;
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
             display: flex;
             align-items: center;
             justify-content: space-between;
             padding: 0 1.5rem;
             z-index: 100;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
 
         .brand {
@@ -26,21 +27,22 @@
             gap: 0.75rem;
             font-weight: 700;
             font-size: 1.1rem;
-            color: #38bdf8;
+            color: #0f172a;
         }
 
         .tabs {
             display: flex;
             gap: 0.5rem;
-            background: #1e293b;
-            padding: 3px;
+            background: #f1f5f9;
+            padding: 4px;
             border-radius: 8px;
+            border: 1px solid #e2e8f0;
         }
 
         .tab-btn {
             background: transparent;
             border: none;
-            color: #94a3b8;
+            color: #475569;
             padding: 6px 16px;
             border-radius: 6px;
             font-weight: 600;
@@ -53,13 +55,14 @@
         }
 
         .tab-btn:hover {
-            color: #f8fafc;
+            color: #0f172a;
+            background: #e2e8f0;
         }
 
         .tab-btn.active {
             background: #2563eb;
             color: #ffffff;
-            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
         }
 
         .content-frame {
