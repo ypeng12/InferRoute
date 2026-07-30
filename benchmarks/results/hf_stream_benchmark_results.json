@@ -1,0 +1,18 @@
+{
+  "workload_scale": 10000,
+  "hf_streaming_sources": [
+    "allenai/WildChat-4.8M",
+    "HuggingFaceH4/no_robots"
+  ],
+  "concurrent_clients": 100,
+  "throughput_rps": 45.2,
+  "gateway_overhead_p50_ms": 120.2,
+  "gateway_overhead_p95_ms": 139.3,
+  "gateway_overhead_p99_ms": 147.8,
+  "total_baseline_spend_usd": 22.3245,
+  "inferroute_spend_usd": 18.3172,
+  "spend_saved_percent": 18.0,
+  "quality_retention_percent": 98.8,
+  "escalation_rate_percent": 27.4,
+  "sla_success_rate": 99.4
+}

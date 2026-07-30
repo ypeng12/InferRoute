@@ -32,6 +32,12 @@ class OpenAIAdapter(BaseAdapter):
         )
         return cost
 
+    def _get_client(self, req: dict[str, Any]) -> AsyncOpenAI:
+        byok_key = req.get("byok_api_key") or req.get("byok_keys", {}).get("openai")
+        if byok_key:
+            return AsyncOpenAI(api_key=byok_key)
+        return self.client
+
     async def generate(self, req: dict[str, Any]) -> dict[str, Any]:
         if self.mock_mode:
             return await self._mock_generate(req)
@@ -50,12 +56,14 @@ class OpenAIAdapter(BaseAdapter):
         if "response_format" in req:
             params["response_format"] = req["response_format"]
 
+        client = self._get_client(req)
+
         with tracer.start_as_current_span("openai_generate") as span:
             span.set_attribute("llm.model", model)
             start_time = time.time()
             
             try:
-                response = await self.client.chat.completions.create(**params)
+                response = await client.chat.completions.create(**params)
                 latency = time.time() - start_time
                 span.set_attribute("llm.latency_seconds", latency)
                 
@@ -141,8 +149,9 @@ class OpenAIAdapter(BaseAdapter):
         completion_tokens = 0
         cached_tokens = 0
         
+        client = self._get_client(req)
         try:
-            stream = await self.client.chat.completions.create(**params)
+            stream = await client.chat.completions.create(**params)
             
             async for chunk in stream:
                 if not ttft_recorded and len(chunk.choices) > 0 and chunk.choices[0].delta.content:

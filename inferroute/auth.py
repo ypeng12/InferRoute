@@ -116,3 +116,43 @@ async def check_rate_limit(tenant_id: str) -> None:
     except Exception as e:
         logger.error(f"Redis rate limiter exception: {e}. Bypassing rate limiting.")
         return
+
+
+def extract_byok_keys(request) -> dict[str, str]:
+    """
+    Extracts Bring Your Own Key (BYOK) headers from the incoming request.
+    Supported headers:
+      - X-OpenAI-Api-Key
+      - X-Gemini-Api-Key
+      - X-Anthropic-Api-Key
+    """
+    if not request or not hasattr(request, "headers"):
+        return {}
+        
+    byok = {}
+    header_map = {
+        "x-openai-api-key": "openai",
+        "x-gemini-api-key": "gemini",
+        "x-anthropic-api-key": "anthropic",
+    }
+    for header_name, provider in header_map.items():
+        val = request.headers.get(header_name)
+        if val:
+            byok[provider] = val
+    return byok
+
+
+async def check_budget_limits(tenant_id: str, estimated_cost_usd: float = 0.0, max_cost_limit_usd: float = 0.50) -> None:
+    """
+    Validates per-request estimated budget limit for a tenant.
+    Rejects requests that exceed single-request USD cost caps.
+    """
+    if tenant_id == "admin":
+        return
+
+    if estimated_cost_usd > max_cost_limit_usd:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Budget Guardrail Triggered: Request estimated cost (${estimated_cost_usd:.4f}) exceeds maximum allowed cap (${max_cost_limit_usd:.4f})."
+        )
+

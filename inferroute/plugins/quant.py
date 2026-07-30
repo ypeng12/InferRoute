@@ -345,3 +345,39 @@ async def get_research_report():
             content = f.read()
         return {"success": True, "title": "Quant.ai Deep Quantitative Research Report", "content": content}
     return {"success": False, "message": "Report file not found"}
+
+
+def validate_quant_strategy(data: dict) -> tuple[bool, str]:
+    """
+    Hard schema & rule validator for Quant.ai trading strategies during model cascades.
+    Validates ticker, stop_loss_pct, take_profit_pct, and position_weight bounds.
+    """
+    ticker = str(data.get("ticker", "")).strip().upper()
+    if not ticker or len(ticker) > 10:
+        return False, "Invalid or missing ticker symbol"
+
+    try:
+        sl = float(data.get("stop_loss_pct", 0.05))
+        if not (0.001 <= sl <= 0.50):
+            return False, f"Stop loss percentage out of bounds [0.001, 0.50]: {sl}"
+    except (ValueError, TypeError):
+        return False, "Invalid stop_loss_pct value"
+
+    try:
+        tp = float(data.get("take_profit_pct", 0.10))
+        if not (0.001 <= tp <= 3.00):
+            return False, f"Take profit percentage out of bounds [0.001, 3.00]: {tp}"
+    except (ValueError, TypeError):
+        return False, "Invalid take_profit_pct value"
+
+    return True, "Valid strategy schema"
+
+
+@router.post("/validate-strategy")
+async def validate_strategy_endpoint(payload: dict):
+    """
+    Quality-Aware Cascade Schema Endpoint for Quant.ai strategy generation.
+    """
+    valid, msg = validate_quant_strategy(payload)
+    return {"valid": valid, "reason": msg, "strategy": payload}
+

@@ -13,6 +13,35 @@ AIQ measures the average quality efficiency score of a router across its swept c
 | **MLP Router** | 64.8% | Content-aware classifier routing. |
 | **Zero Router Baseline** | 64.5% | Non-content-aware random model mixture. |
 
+## 💰 Pricing Baselines & Mathematical Formulation
+
+To guarantee 100% mathematical transparency, API costs and savings are computed against official provider price tiers:
+
+$$\text{Cost}_{\text{Baseline}} = \sum_{i=1}^{N} \left( \frac{\text{Tokens}_{\text{in}, i}}{10^6} \times \$5.00 + \frac{\text{Tokens}_{\text{out}, i}}{10^6} \times \$15.00 \right)$$
+
+$$\text{Cost}_{\text{InferRoute}} = \sum_{i=1}^{N} \left( \frac{\text{Tokens}_{\text{in}, i}}{10^6} \times P_{\text{in}}(M_i) + \frac{\text{Tokens}_{\text{out}, i}}{10^6} \times P_{\text{out}}(M_i) \right) \times (1 - \text{CacheHitRate})$$
+
+$$\text{Spend Saved \%} = \frac{\text{Cost}_{\text{Baseline}} - \text{Cost}_{\text{InferRoute}}}{\text{Cost}_{\text{Baseline}}} \times 100\%$$
+
+### Commercial Price Tiers Reference
+
+| Model | Provider | Input / 1M Tokens | Output / 1M Tokens | Traffic Allocation |
+| :--- | :--- | :--- | :--- | :--- |
+| **GPT-4o** *(Baseline)* | OpenAI | $5.00 | $15.00 | 9.0% (Complex reasoning / failover) |
+| **GPT-4o-mini** | OpenAI | $0.15 | $0.60 | 42.0% (Summarization / QA) |
+| **Gemini-1.5-Flash** | Google | $0.075 | $0.30 | 31.0% (Structured JSON extraction) |
+| **vLLM / Llama-3** | Local GPU | $0.00 | $0.00 | 18.0% (Quant.ai strategy parsing) |
+
+---
+
+## 🌐 Dataset Sources (`streaming=True`)
+
+Prompts are streamed directly via Hugging Face Datasets Server without downloading local 15GB files:
+1. **`allenai/WildChat-4.8M`**: 5,000 real ChatGPT user conversations (unstructured real traffic).
+2. **`HuggingFaceH4/no_robots`**: 5,000 category-labeled instructions (ground-truth task benchmark).
+
+---
+
 ## 📋 Comprehensive Performance Table
 | Scenario | Avg Cost ($ USD) | Avg Quality (0-1) | Avg Latency (ms) | Avg TTFT (ms) | SLO Compliance (%) | Fallback Rate (%) |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -46,3 +75,4 @@ AIQ measures the average quality efficiency score of a router across its swept c
 | **zero-router_p0.6** | $0.000025 | 0.67 | 270.8ms | 208.3ms | 100.0% | 0.0% |
 | **zero-router_p0.8** | $0.000032 | 0.68 | 262.5ms | 225.0ms | 100.0% | 0.0% |
 | **zero-router_p1.0** | $0.000044 | 0.75 | 250.0ms | 250.0ms | 100.0% | 0.0% |
+
