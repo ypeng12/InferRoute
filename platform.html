@@ -439,29 +439,91 @@ client = openai.OpenAI(
 
             <section class="card">
                 <div class="card-header">
-                    <div class="card-title">🧮 <span id="calcTitle">Cost Savings Calculation Formula</span></div>
+                    <div class="card-title">🧮 Interactive API Spend Savings Calculator (明确计算每月可节约金额)</div>
                 </div>
 
-                <p style="font-size:0.95rem; color:var(--text-muted); line-height:1.6; margin-bottom:1.2rem;" id="calcDesc">
-                    For every single request routed through InferRoute, the database logs the exact baseline cost if GPT-4 were used vs the actual cost of the routed model:
+                <p style="font-size:0.92rem; color:var(--text-muted); margin-bottom:1.2rem;">
+                    Adjust request volume, average tokens, and baseline provider to calculate your exact monthly and annual dollar savings:
                 </p>
 
-                <div class="code-box" style="margin-bottom:1.5rem;">
-Saved Cost = Baseline_Cost (GPT-4) - Actual_Cost (Routed Model)
+                <div class="grid-3" style="margin-bottom:1.5rem; background:#f8fafc; padding:1.25rem; border-radius:12px; border:1px solid #e2e8f0;">
+                    <div>
+                        <label style="font-weight:700; font-size:0.85rem; display:block; margin-bottom:0.3rem;">Monthly Request Volume:</label>
+                        <input type="number" id="calcRequestsInput" value="100000" step="10000" style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:6px; font-weight:700;" oninput="runCalculatorEstimate()">
+                    </div>
+                    <div>
+                        <label style="font-weight:700; font-size:0.85rem; display:block; margin-bottom:0.3rem;">Avg Tokens per Request:</label>
+                        <input type="number" id="calcTokensInput" value="800" step="100" style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:6px; font-weight:700;" oninput="runCalculatorEstimate()">
+                    </div>
+                    <div>
+                        <label style="font-weight:700; font-size:0.85rem; display:block; margin-bottom:0.3rem;">Current Direct API Model:</label>
+                        <select id="calcModelSelect" style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:6px; font-weight:700;" onchange="runCalculatorEstimate()">
+                            <option value="gpt-4o" selected>OpenAI GPT-4o ($5.00 / $15.00 per 1M)</option>
+                            <option value="gpt-4-turbo">OpenAI GPT-4 Turbo ($10.00 / $30.00 per 1M)</option>
+                            <option value="claude-3-5-sonnet">Claude 3.5 Sonnet ($3.00 / $15.00 per 1M)</option>
+                        </select>
+                    </div>
                 </div>
 
-                <div class="grid-2">
-                    <div style="background:#f8fafc; border:1px solid var(--card-border); padding:1.5rem; border-radius:12px;">
-                        <h4 style="font-size:1.1rem; font-weight:800; color:var(--accent-red); margin-bottom:0.5rem;" id="directTitle">Direct GPT-4 (Without Gateway)</h4>
-                        <div style="font-size:1.8rem; font-weight:800; margin-bottom:0.5rem;">$1,500.00</div>
-                        <p style="font-size:0.85rem; color:var(--text-muted);" id="directSub">100,000 requests @ $0.015 / 1k tokens</p>
+                <div class="grid-4" style="margin-bottom:1.5rem;">
+                    <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:1.25rem; border-radius:12px;">
+                        <h4 style="font-size:0.85rem; font-weight:700; color:#64748b; margin-bottom:0.3rem;">Direct Provider Spend</h4>
+                        <div id="calcRawCost" style="font-size:1.6rem; font-weight:800; color:#ef4444;">$833.00</div>
+                        <p style="font-size:0.75rem; color:#94a3b8; margin-top:0.2rem;">Unoptimized raw cost / mo</p>
                     </div>
 
-                    <div style="background:#f0fdf4; border:1px solid #bbf7d0; padding:1.5rem; border-radius:12px;">
-                        <h4 style="font-size:1.1rem; font-weight:800; color:var(--accent-green); margin-bottom:0.5rem;" id="routedTitle">Routed via InferRoute Engine</h4>
-                        <div style="font-size:1.8rem; font-weight:800; color:var(--accent-green); margin-bottom:0.5rem;">$184.20</div>
-                        <p style="font-size:0.85rem; color:var(--accent-green);" id="routedSub">Net Savings: $1,315.80 (87.7% Cost Reduction)</p>
+                    <div style="background:#f8fafc; border:1px solid #e2e8f0; padding:1.25rem; border-radius:12px;">
+                        <h4 style="font-size:0.85rem; font-weight:700; color:#64748b; margin-bottom:0.3rem;">InferRoute Routed Spend</h4>
+                        <div id="calcInferRouteCost" style="font-size:1.6rem; font-weight:800; color:#2563eb;">$124.90</div>
+                        <p style="font-size:0.75rem; color:#94a3b8; margin-top:0.2rem;">Dynamic routed cost / mo</p>
                     </div>
+
+                    <div style="background:#f0fdf4; border:1px solid #bbf7d0; padding:1.25rem; border-radius:12px;">
+                        <h4 style="font-size:0.85rem; font-weight:700; color:#166534; margin-bottom:0.3rem;">Monthly Dollar Savings</h4>
+                        <div id="calcMonthlySavings" style="font-size:1.6rem; font-weight:800; color:#16a34a;">$708.10 / mo</div>
+                        <p id="calcSavingsPercent" style="font-size:0.75rem; color:#15803d; font-weight:700; margin-top:0.2rem;">85.0% Net Savings</p>
+                    </div>
+
+                    <div style="background:#eff6ff; border:1px solid #bfdbfe; padding:1.25rem; border-radius:12px;">
+                        <h4 style="font-size:0.85rem; font-weight:700; color:#1e40af; margin-bottom:0.3rem;">Annual Projections</h4>
+                        <div id="calcAnnualSavings" style="font-size:1.6rem; font-weight:800; color:#2563eb;">$8,497.20 / yr</div>
+                        <p style="font-size:0.75rem; color:#1d4ed8; margin-top:0.2rem;">Projected annual savings</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- A/B MODEL BENCHMARK TESTER -->
+            <section class="card">
+                <div class="card-header">
+                    <div class="card-title">⚡ Live Multi-Model A/B Benchmark & Latency Suite (多模型同场竞技测试)</div>
+                    <button class="btn" onclick="runAbBenchmarkTest()">🚀 Run Live A/B Benchmark Test</button>
+                </div>
+
+                <p style="font-size:0.88rem; color:var(--text-muted); margin-bottom:1rem;">
+                    Executes side-by-side benchmark comparing Direct GPT-4o vs InferRoute Cascade vs Gemini Flash vs Local vLLM on identical prompts:
+                </p>
+
+                <div id="abTestContainer" style="display:none;">
+                    <div id="abRecommendationBox" style="background:#f0fdf4; border:1px solid #bbf7d0; padding:1rem; border-radius:8px; font-weight:700; color:#15803d; margin-bottom:1rem; font-size:0.92rem;">
+                        Loading benchmark comparison...
+                    </div>
+
+                    <table style="width:100%; border-collapse:collapse; text-align:left; font-size:0.9rem;">
+                        <thead>
+                            <tr style="background:#f8fafc; border-bottom:2px solid #e2e8f0; color:#0f172a;">
+                                <th style="padding:0.75rem;">Model / Gateway Route</th>
+                                <th style="padding:0.75rem;">Provider</th>
+                                <th style="padding:0.75rem;">Latency</th>
+                                <th style="padding:0.75rem;">TTFT</th>
+                                <th style="padding:0.75rem;">Cost / 1k Reqs</th>
+                                <th style="padding:0.75rem;">Accuracy</th>
+                                <th style="padding:0.75rem;">Spend Saved</th>
+                            </tr>
+                        </thead>
+                        <tbody id="abTableBody">
+                            <!-- Dynamic Rows -->
+                        </tbody>
+                    </table>
                 </div>
             </section>
         </div>
@@ -708,6 +770,68 @@ Saved Cost = Baseline_Cost (GPT-4) - Actual_Cost (Routed Model)
                 traceLogsEl.innerText = data.trace_logs.join('\n');
             } catch (e) {
                 traceLogsEl.innerText = "Network / Gateway Connection Error: " + e.message;
+            }
+        }
+
+        async function runCalculatorEstimate() {
+            const reqs = document.getElementById('calcRequestsInput').value || 100000;
+            const tokens = document.getElementById('calcTokensInput').value || 800;
+            const model = document.getElementById('calcModelSelect').value || 'gpt-4o';
+
+            try {
+                const res = await fetch('/v1/calculator/estimate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ monthly_requests: reqs, avg_tokens_per_req: tokens, baseline_model: model })
+                });
+
+                const data = await res.json();
+                document.getElementById('calcRawCost').innerText = '$' + data.raw_monthly_cost_usd.toLocaleString();
+                document.getElementById('calcInferRouteCost').innerText = '$' + data.inferroute_monthly_cost_usd.toLocaleString();
+                document.getElementById('calcMonthlySavings').innerText = '$' + data.monthly_savings_usd.toLocaleString() + ' / mo';
+                document.getElementById('calcAnnualSavings').innerText = '$' + data.annual_savings_usd.toLocaleString() + ' / yr';
+                document.getElementById('calcSavingsPercent').innerText = data.savings_percent + '% Net Savings';
+            } catch (e) {
+                console.log("Calculator error:", e);
+            }
+        }
+
+        async function runAbBenchmarkTest() {
+            const container = document.getElementById('abTestContainer');
+            const tbody = document.getElementById('abTableBody');
+            const recBox = document.getElementById('abRecommendationBox');
+
+            container.style.display = 'block';
+            recBox.innerText = "⏳ Running live side-by-side A/B benchmark across GPT-4o, InferRoute, Gemini, and Local GPU...";
+            tbody.innerHTML = '<tr><td colspan="7" style="padding:1rem; text-align:center;">Executing benchmark...</td></tr>';
+
+            try {
+                const res = await fetch('/v1/benchmark/run_ab_test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: "Benchmarking prompt evaluation for InferRoute AI Gateway." })
+                });
+
+                const data = await res.json();
+                recBox.innerText = "💡 Recommendation: " + data.recommendation;
+
+                let html = "";
+                data.models.forEach(m => {
+                    const highlight = m.status === 'optimal' ? 'background:#f0fdf4; font-weight:700;' : '';
+                    html += `<tr style="border-bottom:1px solid #e2e8f0; ${highlight}">
+                        <td style="padding:0.75rem;">${m.name}</td>
+                        <td style="padding:0.75rem;">${m.provider}</td>
+                        <td style="padding:0.75rem;">${m.latency_ms} ms</td>
+                        <td style="padding:0.75rem;">${m.ttft_ms} ms</td>
+                        <td style="padding:0.75rem;">$${m.cost_per_1k_reqs_usd}</td>
+                        <td style="padding:0.75rem;">${m.quality_score_percent}%</td>
+                        <td style="padding:0.75rem; color:#16a34a; font-weight:700;">${m.savings_vs_baseline_percent > 0 ? '-' + m.savings_vs_baseline_percent + '%' : 'Baseline'}</td>
+                    </tr>`;
+                });
+
+                tbody.innerHTML = html;
+            } catch (e) {
+                recBox.innerText = "Error running A/B benchmark test: " + e.message;
             }
         }
 
