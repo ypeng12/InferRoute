@@ -70,8 +70,8 @@ async def run_simulation():
         async def worker(item: dict):
             nonlocal successful_requests
             async with semaphore:
-                # Add rate-limiting pacing (~45 RPS total across workers)
-                await asyncio.sleep(random.uniform(0.01, 0.05))
+                # High-concurrency worker execution
+                await asyncio.sleep(0.0001)
 
                 req_start = time.time()
 

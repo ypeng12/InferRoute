@@ -2,6 +2,7 @@
 Hugging Face Real Dataset Fetcher for InferRoute.
 
 Downloads 100% REAL open-source human & enterprise prompts directly from Hugging Face:
+- allenai/WildChat-4.8M (Real ChatGPT user conversations & multi-turn interaction)
 - tatsu-lab/alpaca (Instruction & Summarization & Extraction)
 - gsm8k (Math Reasoning)
 - mbpp (Python Coding)
@@ -21,13 +22,22 @@ OUTPUT_FILE = os.path.join(DATASETS_DIR, "datasets", "hf_real_workload_10k.json"
 
 HF_DATASETS = [
     {
+        "name": "allenai/WildChat-4.8M",
+        "config": "default",
+        "split": "train",
+        "category": "wildchat_real_conversations",
+        "prompt_field": "conversation",
+        "input_field": None,
+        "target_count": 5000
+    },
+    {
         "name": "tatsu-lab/alpaca",
         "config": "default",
         "split": "train",
         "category": "general_instruction",
         "prompt_field": "instruction",
         "input_field": "input",
-        "target_count": 5000
+        "target_count": 2500
     },
     {
         "name": "gsm8k",
@@ -36,7 +46,7 @@ HF_DATASETS = [
         "category": "math_reasoning",
         "prompt_field": "question",
         "input_field": None,
-        "target_count": 3000
+        "target_count": 1500
     },
     {
         "name": "mbpp",
@@ -45,7 +55,7 @@ HF_DATASETS = [
         "category": "code_generation",
         "prompt_field": "text",
         "input_field": None,
-        "target_count": 2000
+        "target_count": 1000
     }
 ]
 
@@ -58,7 +68,7 @@ def fetch_hf_rows(dataset_name: str, config: str, split: str, offset: int, lengt
             data = json.loads(resp.read().decode("utf-8"))
             return [r["row"] for r in data.get("rows", [])]
     except Exception as e:
-        print(f"[WARN] HF API fetch offset={offset} error: {e}")
+        print(f"[WARN] HF API fetch {dataset_name} offset={offset} error: {e}")
         return []
 
 
@@ -84,16 +94,24 @@ def build_real_hf_dataset():
         while fetched < target:
             rows = fetch_hf_rows(name, ds_info["config"], ds_info["split"], offset, batch_size)
             if not rows:
-                print(f"     [NOTE] Reached max available rows ({fetched:,}) for {name}. Cycling data to fill targets.")
+                print(f"     [NOTE] Reached max available rows ({fetched:,}) for {name}.")
                 break
 
             for r in rows:
-                p_text = r.get(p_field, "")
+                if name == "allenai/WildChat-4.8M":
+                    conv = r.get("conversation", [])
+                    p_text = ""
+                    for msg in conv:
+                        if isinstance(msg, dict) and msg.get("role") == "user" and msg.get("content"):
+                            p_text = msg.get("content", "").strip()
+                            break
+                else:
+                    p_text = r.get(p_field, "")
+                    if in_field and r.get(in_field):
+                        p_text += f"\nInput Context: {r.get(in_field)}"
+
                 if not p_text:
                     continue
-
-                if in_field and r.get(in_field):
-                    p_text += f"\nInput Context: {r.get(in_field)}"
 
                 combined_prompts.append({
                     "id": f"hf_{cat}_{fetched+1:05d}",
@@ -108,7 +126,7 @@ def build_real_hf_dataset():
                     break
 
             offset += batch_size
-            time.sleep(0.1) # polite delay
+            time.sleep(0.05)  # polite API delay
 
         print(f"     [OK] Successfully fetched {fetched:,} real prompts from {name}")
 
@@ -125,7 +143,9 @@ def build_real_hf_dataset():
 
     print(f"\n[SUCCESS] Built 100% REAL Hugging Face Dataset with {len(combined_prompts):,} prompts!")
     print(f"          Saved to: {OUTPUT_FILE}")
-    print(f"          Sources: tatsu-lab/alpaca, gsm8k, mbpp")
+    print(f"          Primary Source: allenai/WildChat-4.8M (5,000 real conversations)")
+    print(f"          Supporting Sources: tatsu-lab/alpaca, gsm8k, mbpp")
+
 
 if __name__ == "__main__":
     build_real_hf_dataset()
