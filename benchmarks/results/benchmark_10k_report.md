@@ -30,6 +30,6 @@ This empirical benchmark measures gateway performance, concurrency throughput, r
 
 ## ⏱️ Latency & Gateway Overhead Distribution
 
-- **Gateway Overhead P50**: 118.6 ms (Trie lookup + Route classifier)
-- **Gateway Overhead P95**: **138.5 ms** (Quality-aware Schema Validation)
-- **Gateway Overhead P99**: 146.6 ms (Speculative stream buffer check)
+- **Gateway Overhead P50**: 118.4 ms (Trie lookup + Route classifier)
+- **Gateway Overhead P95**: **137.8 ms** (Quality-aware Schema Validation)
+- **Gateway Overhead P99**: 146.2 ms (Speculative stream buffer check)

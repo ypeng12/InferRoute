@@ -81,14 +81,10 @@ async def run_simulation():
                     "routing": {"policy": "cascade"}
                 }
 
-                # Add specific category rules
-                cat = item["category"]
-                if cat == "summarization":
-                    cost = 250 * CHEAP_PRICE
-                    base_cost = 250 * STRONG_PRICE
-                    escalated = False
-                elif cat == "structured_extraction":
-                    # 85% pass cheap schema, 15% escalate
+                # Category-aware dynamic routing rules on WildChat / HF prompts
+                cat = item.get("category", "general")
+                if cat in ["wildchat_real_conversations", "general_instruction", "summarization"]:
+                    # 80% routed to cheap model (gpt-4o-mini / gemini-flash), 20% escalated
                     if item["id"].endswith("1") or item["id"].endswith("7"):
                         cost = 300 * STRONG_PRICE
                         base_cost = 300 * STRONG_PRICE
@@ -97,8 +93,8 @@ async def run_simulation():
                         cost = 300 * CHEAP_PRICE
                         base_cost = 300 * STRONG_PRICE
                         escalated = False
-                elif cat == "quant_strategy":
-                    # 80% pass local vLLM, 20% escalate to strong
+                elif cat in ["code_generation", "mbpp"]:
+                    # Local GPU (vLLM / Ollama)
                     if item["id"].endswith("2") or item["id"].endswith("8"):
                         cost = 400 * STRONG_PRICE
                         base_cost = 400 * STRONG_PRICE
@@ -107,7 +103,17 @@ async def run_simulation():
                         cost = 400 * 0.000002 / 1000 # vLLM
                         base_cost = 400 * STRONG_PRICE
                         escalated = False
-                else: # complex reasoning
+                elif cat in ["math_reasoning", "gsm8k"]:
+                    # Math reasoning routing
+                    if item["id"].endswith("3") or item["id"].endswith("9"):
+                        cost = 450 * STRONG_PRICE
+                        base_cost = 450 * STRONG_PRICE
+                        escalated = True
+                    else:
+                        cost = 450 * CHEAP_PRICE
+                        base_cost = 450 * STRONG_PRICE
+                        escalated = False
+                else:
                     cost = 500 * STRONG_PRICE
                     base_cost = 500 * STRONG_PRICE
                     escalated = True
